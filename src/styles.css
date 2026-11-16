@@ -443,8 +443,6 @@ math-field::part(virtual-keyboard-toggle) { display: none; }
 .math-display math-field.mf-display::part(content) { justify-content: center; text-align: center; }
 .math-display:hover math-field.mf-display { background: var(--math-bg); }
 .math-display math-field.mf-display:focus-within { background: var(--math-bg); box-shadow: 0 0 0 1.5px var(--accent); }
-.math-display math-field.mf-display:focus-within::part(menu-toggle),
-.math-display math-field.mf-display:focus-within::part(virtual-keyboard-toggle) { display: flex; }
 .doc .math-display[data-numbered='true'] { counter-increment: eq; }
 .doc .math-display[data-numbered='true']::after {
   content: '(' counter(eq) ')';

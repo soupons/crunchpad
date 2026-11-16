@@ -9,7 +9,7 @@ const li = (...content: unknown[]) => ({ type: 'list_item', content: [p(...conte
 export const WELCOME_DOC = {
   type: 'doc',
   content: [
-    { type: 'heading', attrs: { level: 1 }, content: [t('Welcome to crunchpad')] },
+    { type: 'heading', attrs: { level: 1 }, content: [t('Welcome to crunchpad!')] },
     p(
       t('A document editor where equations live right in your text, like '),
       m('e^{i\\pi}+1=0'),
@@ -63,6 +63,34 @@ export const WELCOME_DOC = {
       attrs: { kind: 'proof', title: '' },
       content: [p(t('Arrange four copies of the triangle inside a square of side '), m('a+b'), t(' and compare areas.'))],
     },
+    { type: 'heading', attrs: { level: 2 }, content: [t('The quick search menu')] },
+    p(
+      t('Press '),
+      k('Ctrl+Space'),
+      t(' anywhere to open quick search, then type what you’re looking for. It finds symbols (“theta”, “infinity”), templates (“matrix”, “integral”), formatting (“bold”, “heading 2”) and actions (“export pdf”, “insert drawing”). Use the arrow keys to pick a result and '),
+      k('Enter'),
+      t(' to run it. If you can’t find a feature, search for it here first.'),
+    ),
+    { type: 'heading', attrs: { level: 2 }, content: [t('Drawings')] },
+    p(
+      t('Click '),
+      b('Drawing'),
+      t(' on the Insert tab (or search “drawing”) to add a sketch area to your page. Click inside it to show the drawing toolbar, where you can pick pens, shapes, the eraser, or the move tool. Drag the corner handle to resize the area. Click outside the drawing when you’re done. Drawings are kept when you export to Word, PDF, LaTeX and HTML.'),
+    ),
+    { type: 'heading', attrs: { level: 2 }, content: [t('Copying and pasting images')] },
+    p(
+      t('Right-click any equation or drawing and choose '),
+      b('Copy as image'),
+      t(' to copy it as a picture you can paste into other apps, like slides, chats or emails. Use '),
+      b('Copy LaTeX'),
+      t(' to copy the source instead. Ordinary '),
+      k('Ctrl+C'),
+      t(' / '),
+      k('Ctrl+V'),
+      t(' inside crunchpad keeps equations and drawings editable. Plain text with '),
+      k('$…$'),
+      t(' in it is turned into real equations when you paste it.'),
+    ),
     { type: 'heading', attrs: { level: 2 }, content: [t('Macros')] },
     p(
       t('Click '),
@@ -76,7 +104,7 @@ export const WELCOME_DOC = {
     { type: 'heading', attrs: { level: 2 }, content: [t('Saving and exporting')] },
     p(
       t('Documents save as '),
-      k('.mathdoc'),
+      k('.crunchpad'),
       t(' files. Export to '),
       b('Word'),
       t(' (with real, editable Word equations), '),
@@ -88,6 +116,13 @@ export const WELCOME_DOC = {
       t(' from the Export panel. Press '),
       k('F1'),
       t(' for every shortcut.'),
+    ),
+    { type: 'horizontal_rule' },
+    p(
+      b('Heads up: '),
+      t('crunchpad is in very early stages, so you may run into bugs or missing features. Please leave feedback with any suggestions or bug reports using the '),
+      b('Feedback'),
+      t(' button in the top-right corner (or search “feedback”). Every report helps!'),
     ),
     p(),
   ],
