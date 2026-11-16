@@ -3,8 +3,9 @@
  */
 import { isDesktop } from './platform';
 
-/** The GitHub repo that receives feedback, e.g. `https://github.com/you/crunchpad`. */
-export const FEEDBACK_REPO = 'https://github.com/soupons/crunchpad';
+/** The project's GitHub repo; feedback goes to its issues. */
+export const REPO_URL = 'https://github.com/soupons/crunchpad';
+export const FEEDBACK_REPO = REPO_URL;
 
 export const feedbackConfigured = () => !FEEDBACK_REPO.includes('/OWNER/');
 

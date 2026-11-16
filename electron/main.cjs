@@ -50,6 +50,11 @@ async function addRecent(p) {
   app.addRecentDocument(p);
   buildMenu();
 }
+async function removeRecent(p) {
+  const list = (await getRecent()).filter((x) => x !== p);
+  await fs.writeFile(recentFile(), JSON.stringify(list)).catch(() => {});
+  buildMenu();
+}
 
 // ---- Window -----------------------------------------------------------------
 function createWindow() {
@@ -209,6 +214,8 @@ async function buildMenu() {
     {
       label: '&View',
       submenu: [
+        item('Home', 'app-home'),
+        { type: 'separator' },
         item('Zoom In', 'view-zoom-in', 'CmdOrCtrl+='),
         item('Zoom Out', 'view-zoom-out', 'CmdOrCtrl+-'),
         item('Reset Zoom', 'view-zoom-reset', 'CmdOrCtrl+0'),
@@ -320,6 +327,7 @@ ipcMain.handle('clipboard-read', async () => {
 
 ipcMain.handle('get-recent', () => getRecent());
 ipcMain.on('add-recent', (_e, p) => void addRecent(p));
+ipcMain.on('remove-recent', (_e, p) => void removeRecent(p));
 ipcMain.on('set-title', (_e, title) => win?.setTitle(title));
 ipcMain.on('set-dirty', (_e, d) => {
   dirty = !!d;

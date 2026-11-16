@@ -9,6 +9,7 @@ const app = new App({
   page: document.getElementById('page')!,
   quick: document.getElementById('quicksearch-root')!,
   status: document.getElementById('statusbar')!,
+  home: document.getElementById('home')!,
 });
 app.start();
 

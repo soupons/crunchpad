@@ -39,6 +39,8 @@ import { exportLatex } from '../export/latex';
 import { exportHtml } from '../export/html';
 import { WELCOME_DOC } from './welcome';
 import { feedbackConfigured, openFeedback } from './feedback';
+import { Home, type OpenResult } from './home';
+import { addRecentHandle, addRecentPath, ensurePermission, getHandle, recentDocs, seedFromNative, type RecentDoc } from './recent';
 
 const NATIVE_EXT = 'crunchpad';
 /** Files saved before the rename from MathMirror; still opened as native documents. */
@@ -64,10 +66,11 @@ export class App {
   zoom = 1;
   private qsTarget: MathfieldElement | null = null;
   private recoveryTimer = 0;
-  private recentFiles: string[] = [];
+
+  home!: Home;
 
   constructor(
-    private els: { ribbon: HTMLElement; page: HTMLElement; quick: HTMLElement; status: HTMLElement },
+    private els: { ribbon: HTMLElement; page: HTMLElement; quick: HTMLElement; status: HTMLElement; home: HTMLElement },
   ) {}
 
   // ---- Boot -------------------------------------------------------------------
@@ -114,9 +117,18 @@ export class App {
       openSearch: () => runCommand('quick-search'),
     });
 
+    this.home = new Home(this.els.home, {
+      currentName: () => this.file.name,
+      newDoc: () => this.newDoc(),
+      open: () => this.open(),
+      openRecent: (d) => this.openRecent(d),
+      settings: () => runCommand('app-settings'),
+      onHide: () => this.view.focus(),
+    });
+
     installShortcutHandler(
       () => !!getActiveMathfield(),
-      () => this.quick.isOpen || isDialogOpen(),
+      () => this.quick.isOpen || isDialogOpen() || this.home.isOpen,
     );
     onMacrosChanged(() => this.registerMacroCommands());
 
@@ -129,9 +141,7 @@ export class App {
     if (native) {
       native.onMenu((id) => runCommand(id));
       native.onOpenPath((p) => void this.openPath(p));
-      void native.getRecent().then((r) => {
-        this.recentFiles = r;
-      });
+      void seedFromNative();
     }
 
     this.refreshUI();
@@ -270,6 +280,7 @@ export class App {
     native?.setDirty(false);
     this.clearRecovery();
     this.refreshUI();
+    this.home?.hide();
     this.view.focus();
   }
 
@@ -295,46 +306,74 @@ export class App {
     });
   }
 
-  async newDoc() {
-    if (!(await this.confirmDiscard())) return;
+  async newDoc(): Promise<boolean> {
+    if (!(await this.confirmDiscard())) return false;
     this.loadDoc(schema.nodes.doc.create(null, schema.nodes.paragraph.create()), `Untitled.${NATIVE_EXT}`, null);
+    return true;
   }
 
-  async open() {
-    if (!(await this.confirmDiscard())) return;
+  async open(): Promise<boolean> {
+    if (!(await this.confirmDiscard())) return false;
     try {
       const f = await openFile(DOC_FILTERS);
-      if (!f) return;
-      const doc = this.parseFile(f.name, f.text);
-      const isNative = /\.(crunchpad|mathdoc|json)$/i.test(f.name);
-      const name = isNative ? f.name : f.name.replace(/\.[^.]+$/, '') + '.' + NATIVE_EXT;
-      this.loadDoc(doc, name, isNative ? { name: f.name, path: f.path, handle: f.handle } : null);
-      if (f.path) this.addRecent(f.path);
-      if (!isNative) this.status.notice(`Imported ${f.name}. Save to keep it as a .${NATIVE_EXT} file.`);
+      if (!f) return false;
+      this.loadOpened(f);
+      return true;
     } catch (err) {
       this.error('Could not open file', err);
+      return false;
     }
   }
 
-  async openPath(path: string) {
-    if (!native) return;
-    if (!(await this.confirmDiscard())) return;
+  /** Load a file that was just read from disk, importing non-native formats. */
+  private loadOpened(f: { name: string; text: string; path?: string; handle?: FileSystemFileHandle }) {
+    const doc = this.parseFile(f.name, f.text);
+    const isNative = /\.(crunchpad|mathdoc|json)$/i.test(f.name);
+    const name = isNative ? f.name : f.name.replace(/\.[^.]+$/, '') + '.' + NATIVE_EXT;
+    this.loadDoc(doc, name, isNative ? { name: f.name, path: f.path, handle: f.handle } : null);
+    this.addRecent(f);
+    if (!isNative) this.status.notice(`Imported ${f.name}. Save to keep it as a .${NATIVE_EXT} file.`);
+  }
+
+  async openPath(path: string): Promise<OpenResult> {
+    if (!native) return 'cancel';
+    if (!(await this.confirmDiscard())) return 'cancel';
     try {
       const f = await native.readFile(path);
       if (!f) {
-        this.status.notice(`File not found: ${path}`);
-        return;
+        if (!this.home.isOpen) this.status.notice(`File not found: ${path}`);
+        return 'missing';
       }
-      this.loadDoc(this.parseFile(f.name, f.text), f.name, { name: f.name, path: f.path });
-      this.addRecent(f.path);
+      this.loadOpened(f);
+      return 'ok';
     } catch (err) {
       this.error('Could not open file', err);
+      return 'cancel';
     }
   }
 
-  private addRecent(path: string) {
-    this.recentFiles = [path, ...this.recentFiles.filter((p) => p !== path)].slice(0, 10);
-    native?.addRecent(path);
+  /** Reopen a document from the recent list (home page, quick search). */
+  async openRecent(d: RecentDoc): Promise<OpenResult> {
+    if (d.path) return this.openPath(d.path);
+    const handle = await getHandle(d.id);
+    if (!handle) return 'missing';
+    try {
+      // Ask for access first, while we still have the click that started this.
+      if (!(await ensurePermission(handle))) return 'cancel';
+      if (!(await this.confirmDiscard())) return 'cancel';
+      const file = await handle.getFile();
+      this.loadOpened({ name: file.name, text: await file.text(), handle });
+      return 'ok';
+    } catch (err) {
+      if ((err as DOMException).name === 'NotFoundError') return 'missing';
+      this.error('Could not open file', err);
+      return 'cancel';
+    }
+  }
+
+  private addRecent(t: { path?: string; handle?: FileSystemFileHandle }) {
+    if (t.path) addRecentPath(t.path);
+    else if (t.handle) void addRecentHandle(t.handle).catch((err) => console.warn('Could not remember file', err));
   }
 
   async save(): Promise<boolean> {
@@ -359,7 +398,7 @@ export class App {
       if (!t) return false;
       this.file.target = t.path || t.handle ? t : null;
       this.file.name = t.name;
-      if (t.path) this.addRecent(t.path);
+      this.addRecent(t);
       this.setDirty(false);
       this.clearRecovery();
       this.refreshUI();
@@ -552,11 +591,8 @@ export class App {
         },
       });
     }
-    if (native) {
-      for (const p of this.recentFiles) {
-        const name = p.split(/[\\/]/).pop() ?? p;
-        items.push({ id: `file:${p}`, kind: 'file', title: name, subtitle: p, keywords: 'open recent file', run: () => void this.openPath(p) });
-      }
+    for (const d of recentDocs()) {
+      items.push({ id: `file:${d.id}`, kind: 'file', title: d.name, subtitle: d.path, keywords: 'open recent file previous', run: () => void this.openRecent(d) });
     }
     return items;
   }
@@ -599,8 +635,8 @@ export class App {
     const mark = (name: string) => () => cmd.markActive(s(), schema.marks[name]);
     register(
       // File
-      { id: 'file-new', title: 'New document', category: 'File', shortcut: isDesktop ? 'Mod-n' : 'Mod-Alt-n', global: true, keywords: 'create blank', run: () => this.newDoc() },
-      { id: 'file-open', title: 'Open…', category: 'File', shortcut: 'Mod-o', global: true, keywords: 'load file import', run: () => this.open() },
+      { id: 'file-new', title: 'New document', category: 'File', shortcut: isDesktop ? 'Mod-n' : 'Mod-Alt-n', global: true, keywords: 'create blank', run: () => void this.newDoc() },
+      { id: 'file-open', title: 'Open…', category: 'File', shortcut: 'Mod-o', global: true, keywords: 'load file import', run: () => void this.open() },
       { id: 'file-save', title: 'Save', category: 'File', shortcut: 'Mod-s', global: true, run: () => void this.save() },
       { id: 'file-save-as', title: 'Save as…', category: 'File', shortcut: 'Mod-Shift-s', global: true, keywords: 'save copy', run: () => void this.saveAs() },
       // Export
@@ -733,7 +769,19 @@ export class App {
         },
       },
       // View
-      { id: 'quick-search', title: 'Quick search', category: 'View', shortcut: 'Mod-Space', global: true, hidden: true, run: () => this.quick.toggle() },
+      {
+        id: 'quick-search',
+        title: 'Quick search',
+        category: 'View',
+        shortcut: 'Mod-Space',
+        global: true,
+        hidden: true,
+        run: () => {
+          this.home.hide();
+          this.quick.toggle();
+        },
+      },
+      { id: 'app-home', title: 'Home', category: 'View', global: true, keywords: 'start page recent previous documents files dashboard welcome', run: () => this.home.toggle() },
       { id: 'app-settings', title: 'Settings…', category: 'View', global: true, keywords: 'preferences options font default notation arcsin inverse trig multiplication differential spellcheck theme', run: () => settingsDialog({ convertInverseTrig: (st) => this.convertInverseTrig(st) }) },
       { id: 'view-theme', title: 'Toggle dark mode', category: 'View', keywords: 'theme night light dark', run: () => this.toggleTheme() },
       { id: 'view-zoom-in', title: 'Zoom in', category: 'View', shortcut: 'Mod-=', global: true, run: () => this.setZoom(this.zoom + 0.1) },

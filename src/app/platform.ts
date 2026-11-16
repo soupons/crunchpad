@@ -43,6 +43,7 @@ export interface NativeBridge {
   onOpenPath(cb: (path: string) => void): void;
   getRecent(): Promise<string[]>;
   addRecent(path: string): void;
+  removeRecent(path: string): void;
 }
 
 declare global {

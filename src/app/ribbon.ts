@@ -333,7 +333,12 @@ export class Ribbon {
       this.btn({ cmd: 'app-settings', label: '⚙', cls: 'rb-round', title: 'Settings: font, math notation, typing' }),
     );
 
-    const brand = h('div.rb-brand', { title: 'crunchpad' }, h('span.logo', { html: LOGO_SVG }), h('span', {}, 'crunchpad'));
+    const brand = h(
+      'button.rb-brand',
+      { title: 'Home: new, open and recent documents', 'aria-label': 'Home', onclick: () => runCommand('app-home') },
+      h('span.logo', { html: LOGO_SVG }),
+      h('span', {}, 'crunchpad'),
+    );
     this.root.replaceChildren(brand, left, right);
   }
 

@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('crunchpadNative', {
   setDirty: (dirty) => ipcRenderer.send('set-dirty', dirty),
   getRecent: () => ipcRenderer.invoke('get-recent'),
   addRecent: (path) => ipcRenderer.send('add-recent', path),
+  removeRecent: (path) => ipcRenderer.send('remove-recent', path),
   clipboardWrite: (data) => ipcRenderer.invoke('clipboard-write', data),
   clipboardRead: () => ipcRenderer.invoke('clipboard-read'),
   onMenu: (cb) => ipcRenderer.on('menu', (_e, id) => cb(id)),
