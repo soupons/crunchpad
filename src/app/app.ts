@@ -11,7 +11,9 @@ import { mathHooks, mathNodeViews } from '../editor/mathview';
 import * as cmd from '../editor/commands';
 import { docFromText } from '../editor/textmath';
 import { MATH_CATALOG } from '../math/catalog';
-import { focusMathfield, getActiveMathfield, showVirtualKeyboard } from '../math/mathfield';
+import { focusMathfield, getActiveMathfield, setMathfieldOptions, showVirtualKeyboard } from '../math/mathfield';
+import { applyNotation, convertInverseTrig, type NotationPrefs } from '../math/notation';
+import { exportOptions, fontCss, getSettings, onSettingsChanged, updateSettings, type Settings } from './settings';
 
 import { register, runCommand, allCommands, installShortcutHandler, shortcutLabel } from './registry';
 import { Ribbon } from './ribbon';
@@ -25,6 +27,7 @@ import {
   shortcutsDialog,
   editMacroDialog,
   openModal,
+  settingsDialog,
 } from './dialogs';
 import { isDesktop, native, openFile, saveAs, saveTo, type FileFilter, type SaveTarget } from './platform';
 import { StatusBar } from './statusbar';
@@ -40,7 +43,6 @@ const DOC_FILTERS: FileFilter[] = [
   { name: 'Text with $math$ (Markdown, TeX, plain text)', extensions: ['md', 'txt', 'tex'] },
 ];
 const RECOVERY_KEY = 'mathmirror:recovery';
-const THEME_KEY = 'mathmirror:theme';
 
 interface FileInfo {
   name: string;
@@ -66,7 +68,8 @@ export class App {
   // ---- Boot -------------------------------------------------------------------
 
   start() {
-    this.applyTheme(localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null);
+    this.applySettings(getSettings());
+    onSettingsChanged((st) => this.applySettings(st));
     loadMacros();
     this.registerCommands();
 
@@ -75,7 +78,7 @@ export class App {
       state: this.newState(initialDoc),
       nodeViews: mathNodeViews,
       dispatchTransaction: (tr) => this.dispatch(tr),
-      attributes: { class: 'doc', spellcheck: 'true', 'aria-label': 'Document' },
+      attributes: () => ({ class: 'doc', spellcheck: String(getSettings().spellcheck), 'aria-label': 'Document' }),
     });
 
     mathHooks.overlayOpen = () => this.quick?.isOpen || isDialogOpen();
@@ -171,22 +174,42 @@ export class App {
 
   // ---- Theme / zoom -------------------------------------------------------------
 
-  private applyTheme(theme: 'light' | 'dark' | null) {
+  /** Push settings into the page: theme, document font, math options. */
+  private applySettings(st: Settings) {
     const root = document.documentElement;
-    if (theme) root.dataset.theme = theme;
-    else delete root.dataset.theme;
+    if (st.theme === 'system') delete root.dataset.theme;
+    else root.dataset.theme = st.theme;
+    root.style.setProperty('--doc-font', fontCss(st.font));
+    root.style.setProperty('--doc-size', `${st.fontSize}pt`);
+    root.style.setProperty('--doc-line', String(st.lineSpacing));
+    root.dataset.eqnum = st.eqNumberStyle;
+    setMathfieldOptions({ smartFence: st.smartFence, smartSuperscript: st.smartSuperscript, letterShapeStyle: st.letterShape });
+    // Re-evaluates the (function-valued) editor attributes, e.g. spellcheck.
+    this.view?.setProps({});
   }
 
   private toggleTheme() {
     const current =
       document.documentElement.dataset.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    const next = current === 'dark' ? 'light' : 'dark';
-    this.applyTheme(next);
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch {
-      /* ignore */
-    }
+    updateSettings({ theme: current === 'dark' ? 'light' : 'dark' });
+  }
+
+  /** Rewrite arcsin ⇄ sin^{-1} in every equation of the open document. */
+  private convertInverseTrig(style: NotationPrefs['inverseTrig']): number {
+    const { state } = this.view;
+    let tr = state.tr;
+    let changed = 0;
+    state.doc.descendants((node, pos) => {
+      if (node.type !== schema.nodes.math_inline && node.type !== schema.nodes.math_display) return true;
+      const latex = convertInverseTrig(node.attrs.latex, style);
+      if (latex !== node.attrs.latex) {
+        tr = tr.setNodeMarkup(pos, undefined, { ...node.attrs, latex });
+        changed++;
+      }
+      return false;
+    });
+    if (changed) this.view.dispatch(tr);
+    return changed;
   }
 
   private setZoom(z: number) {
@@ -335,14 +358,14 @@ export class App {
       const doc = this.view.state.doc;
       const title = this.baseName();
       if (kind === 'docx') {
-        const data = await exportDocx(doc, title);
+        const data = await exportDocx(doc, title, exportOptions());
         const t = await saveAs(`${title}.docx`, data, [{ name: 'Word document', extensions: ['docx'] }], 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
         if (t) this.status.notice(`Exported ${t.name}`);
       } else if (kind === 'latex') {
-        const t = await saveAs(`${title}.tex`, exportLatex(doc, title), [{ name: 'LaTeX', extensions: ['tex'] }], 'application/x-tex');
+        const t = await saveAs(`${title}.tex`, exportLatex(doc, title, exportOptions()), [{ name: 'LaTeX', extensions: ['tex'] }], 'application/x-tex');
         if (t) this.status.notice(`Exported ${t.name}`);
       } else {
-        const t = await saveAs(`${title}.html`, exportHtml(doc, title), [{ name: 'Web page', extensions: ['html'] }], 'text/html');
+        const t = await saveAs(`${title}.html`, exportHtml(doc, title, exportOptions()), [{ name: 'Web page', extensions: ['html'] }], 'text/html');
         if (t) this.status.notice(`Exported ${t.name}`);
       }
     } catch (err) {
@@ -454,7 +477,7 @@ export class App {
 
   private insertMacro(m: Macro, target: MathfieldElement | null) {
     if (m.kind === 'snippet') this.insertSnippet(m);
-    else cmd.insertMath(this.view, m.latex ?? '', { target });
+    else cmd.insertMath(this.view, m.latex ?? '', { target, raw: true });
   }
 
   private captureSelection() {
@@ -477,7 +500,7 @@ export class App {
         title: e.title,
         subtitle: e.category,
         keywords: e.keywords,
-        latex: e.latex,
+        latex: applyNotation(e.latex),
         run: () => cmd.insertMath(this.view, e.latex, { target: target() }),
       });
     }
@@ -530,7 +553,7 @@ export class App {
         title: target ? 'Insert into equation' : 'Insert as equation',
         keywords: latex,
         latex,
-        run: () => cmd.insertMath(this.view, latex, { target }),
+        run: () => cmd.insertMath(this.view, latex, { target, raw: true }),
       },
       {
         id: 'latex:macro',
@@ -613,7 +636,8 @@ export class App {
       })),
       // Paragraph
       { id: 'list-bullet', title: 'Bulleted list', category: 'Format', shortcut: 'Mod-Shift-8', keywords: 'bullets unordered ul', run: () => this.exec(cmd.toggleBulletList), active: () => !!cmd.inAncestor(s(), schema.nodes.bullet_list) },
-      { id: 'list-ordered', title: 'Numbered list', category: 'Format', shortcut: 'Mod-Shift-7', keywords: 'ordered ol enumerate', run: () => this.exec(cmd.toggleOrderedList), active: () => !!cmd.inAncestor(s(), schema.nodes.ordered_list) },
+      { id: 'list-ordered', title: 'Numbered list', category: 'Format', shortcut: 'Mod-Shift-7', keywords: 'ordered ol enumerate 1. 2. 3.', run: () => this.exec(cmd.toggleOrderedList), active: () => cmd.orderedListStyle(s()) === 'decimal' },
+      { id: 'list-lettered', title: 'Lettered list (a. b. c.)', category: 'Format', shortcut: 'Mod-Shift-9', keywords: 'alphabetical letters ordered abc enumerate parts', run: () => this.exec(cmd.toggleLetteredList), active: () => cmd.orderedListStyle(s()) === 'lower-alpha' },
       { id: 'block-quote', title: 'Quote', category: 'Format', shortcut: 'Mod-Shift-q', keywords: 'blockquote indent', run: () => this.exec(cmd.toggleBlockquote), active: () => !!cmd.inAncestor(s(), schema.nodes.blockquote) },
       { id: 'insert-hr', title: 'Horizontal line', category: 'Insert', keywords: 'rule divider separator', run: () => this.exec(cmd.insertHorizontalRule) },
       ...(['left', 'center', 'right', 'justify'] as const).map((a) => ({
@@ -687,6 +711,7 @@ export class App {
       },
       // View
       { id: 'quick-search', title: 'Quick search', category: 'View', shortcut: 'Mod-Space', global: true, hidden: true, run: () => this.quick.toggle() },
+      { id: 'app-settings', title: 'Settings…', category: 'View', global: true, keywords: 'preferences options font default notation arcsin inverse trig multiplication differential spellcheck theme', run: () => settingsDialog({ convertInverseTrig: (st) => this.convertInverseTrig(st) }) },
       { id: 'view-theme', title: 'Toggle dark mode', category: 'View', keywords: 'theme night light dark', run: () => this.toggleTheme() },
       { id: 'view-zoom-in', title: 'Zoom in', category: 'View', shortcut: 'Mod-=', global: true, run: () => this.setZoom(this.zoom + 0.1) },
       { id: 'view-zoom-out', title: 'Zoom out', category: 'View', shortcut: 'Mod--', global: true, run: () => this.setZoom(this.zoom - 0.1) },

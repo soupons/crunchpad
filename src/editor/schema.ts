@@ -248,9 +248,37 @@ const marks: Record<string, MarkSpec> = {
   },
 };
 
+/** Numbering of an ordered list: 1. 2. 3. or a. b. c. */
+export type ListStyle = 'decimal' | 'lower-alpha';
+
 const base = new Schema({ nodes, marks });
+const withLists = addListNodes(base.spec.nodes, 'paragraph block*', 'block');
 
 export const schema = new Schema({
-  nodes: addListNodes(base.spec.nodes, 'paragraph block*', 'block'),
+  nodes: withLists.update('ordered_list', {
+    ...withLists.get('ordered_list')!,
+    attrs: { order: { default: 1 }, listStyle: { default: 'decimal' as ListStyle } },
+    parseDOM: [
+      {
+        tag: 'ol',
+        getAttrs: (dom) => {
+          const el = dom as HTMLElement;
+          const type = el.getAttribute('type') ?? '';
+          const css = el.style.listStyleType;
+          const alpha = type === 'a' || css === 'lower-alpha' || css === 'lower-latin';
+          return {
+            order: el.hasAttribute('start') ? Number(el.getAttribute('start')) || 1 : 1,
+            listStyle: (alpha ? 'lower-alpha' : 'decimal') as ListStyle,
+          };
+        },
+      },
+    ],
+    toDOM: (node): DOMOutputSpec => {
+      const attrs: Record<string, string> = {};
+      if (node.attrs.order !== 1) attrs.start = String(node.attrs.order);
+      if (node.attrs.listStyle === 'lower-alpha') attrs.type = 'a';
+      return ['ol', attrs, 0];
+    },
+  }),
   marks: base.spec.marks,
 });

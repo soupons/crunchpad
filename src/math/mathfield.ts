@@ -1,4 +1,5 @@
 import { MathfieldElement, type InlineShortcutDefinitions } from 'mathlive';
+import { notationShortcuts, onNotationChanged } from './notation';
 
 /**
  * Global MathLive setup plus tracking of which mathfield the user is typing in,
@@ -24,13 +25,11 @@ let lastFocused: MathfieldElement | null = null;
 let extraShortcuts: InlineShortcutDefinitions = {};
 let defaultShortcuts: InlineShortcutDefinitions | null = null;
 
-/** Extra ease-of-use shortcuts on top of MathLive's defaults (alpha, sqrt, ->, <=, ...). */
+/**
+ * Extra ease-of-use shortcuts on top of MathLive's defaults (alpha, sqrt, ->, <=, ...).
+ * Number sets, `*`, `dx`, `vec` and inverse trig depend on settings: see ./notation.
+ */
 const BUILTIN_EXTRAS: InlineShortcutDefinitions = {
-  RR: '\\mathbb{R}',
-  NN: '\\mathbb{N}',
-  ZZ: '\\mathbb{Z}',
-  QQ: '\\mathbb{Q}',
-  CC: '\\mathbb{C}',
   '=>': '\\Rightarrow',
   '<=>': '\\Leftrightarrow',
   ':=': '\\coloneqq',
@@ -38,10 +37,6 @@ const BUILTIN_EXTRAS: InlineShortcutDefinitions = {
   '...': '\\ldots',
   inf: '\\infty',
   deg: '^{\\circ}',
-  dx: '\\,dx',
-  dy: '\\,dy',
-  dt: '\\,dt',
-  vec: '\\vec{#?}',
   hat: '\\hat{#?}',
   bar: '\\overline{#?}',
   abs: '\\left|#?\\right|',
@@ -55,22 +50,45 @@ const BUILTIN_EXTRAS: InlineShortcutDefinitions = {
 
 function shortcutsFor(mf: MathfieldElement): InlineShortcutDefinitions {
   if (!defaultShortcuts) defaultShortcuts = { ...mf.inlineShortcuts };
-  return { ...defaultShortcuts, ...BUILTIN_EXTRAS, ...extraShortcuts };
+  return { ...defaultShortcuts, ...BUILTIN_EXTRAS, ...notationShortcuts(), ...extraShortcuts };
 }
 
 /** Mathfields whose shortcut list can be set (MathLive requires the element to be mounted). */
 const mounted = new WeakSet<MathfieldElement>();
 
+function refreshShortcuts() {
+  for (const mf of live) if (mounted.has(mf)) mf.inlineShortcuts = shortcutsFor(mf);
+}
+onNotationChanged(refreshShortcuts);
+
 export function setUserShortcuts(shortcuts: InlineShortcutDefinitions) {
   extraShortcuts = shortcuts;
-  for (const mf of live) if (mounted.has(mf)) mf.inlineShortcuts = shortcutsFor(mf);
+  refreshShortcuts();
+}
+
+/** Typing behaviour applied to every mathfield (from Settings). */
+export interface MathfieldOptions {
+  smartFence: boolean;
+  smartSuperscript: boolean;
+  letterShapeStyle: 'tex' | 'iso' | 'french' | 'upright';
+}
+let mfOptions: MathfieldOptions = { smartFence: true, smartSuperscript: true, letterShapeStyle: 'tex' };
+
+function applyOptions(mf: MathfieldElement) {
+  mf.smartFence = mfOptions.smartFence;
+  mf.smartSuperscript = mfOptions.smartSuperscript;
+  mf.letterShapeStyle = mfOptions.letterShapeStyle;
+}
+
+export function setMathfieldOptions(opts: MathfieldOptions) {
+  mfOptions = { ...opts };
+  for (const mf of live) applyOptions(mf);
 }
 
 export function createMathfield(display: boolean): MathfieldElement {
   configureMathLive();
   const mf = new MathfieldElement();
-  mf.smartFence = true;
-  mf.smartSuperscript = true;
+  applyOptions(mf);
   mf.mathVirtualKeyboardPolicy = 'auto';
   mf.classList.add(display ? 'mf-display' : 'mf-inline');
   mf.addEventListener('mount', () => {

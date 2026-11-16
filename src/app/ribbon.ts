@@ -263,8 +263,6 @@ export class Ribbon {
             this.btn({ cmd: 'fmt-code', html: '<code>&lt;/&gt;</code>' }),
           ),
           this.row(
-            this.btn({ cmd: 'fmt-sup', html: 'x<sup>2</sup>' }),
-            this.btn({ cmd: 'fmt-sub', html: 'x<sub>2</sub>' }),
             this.colorSplit('highlight'),
             this.colorSplit('text'),
             this.btn({ cmd: 'fmt-clear', html: '<span class="rb-clear">T<small>×</small></span>' }),
@@ -277,6 +275,7 @@ export class Ribbon {
           this.row(
             this.btn({ cmd: 'list-bullet', html: '<span class="ico-list">•≡</span>' }),
             this.btn({ cmd: 'list-ordered', html: '<span class="ico-list">1≡</span>' }),
+            this.btn({ cmd: 'list-lettered', html: '<span class="ico-list">a≡</span>' }),
             this.btn({ cmd: 'block-quote', html: '<span class="ico-quote">❝</span>' }),
             this.btn({ cmd: 'insert-hr', html: '―' }),
           ),
@@ -330,6 +329,7 @@ export class Ribbon {
       this.btn({ cmd: 'math-keyboard', label: '⌨', cls: 'rb-round', title: 'Math keyboard' }),
       this.btn({ cmd: 'help-shortcuts', label: '?', cls: 'rb-round', title: 'Shortcuts & tips' }),
       this.btn({ cmd: 'view-theme', label: '◐', cls: 'rb-round', title: 'Toggle dark mode' }),
+      this.btn({ cmd: 'app-settings', label: '⚙', cls: 'rb-round', title: 'Settings: font, math notation, typing' }),
     );
 
     this.root.replaceChildren(left, right);

@@ -3,6 +3,8 @@ import { h } from './dom';
 import { allCommands, shortcutLabel, type AppCommand } from './registry';
 import { deleteMacro, getMacros, newMacroId, onMacrosChanged, saveMacro, type Macro } from './macros';
 import { previewLatex } from '../math/catalog';
+import type { NotationPrefs } from '../math/notation';
+import { FONT_CHOICES, fontCss, getSettings, resetSettings, updateSettings, type Settings } from './settings';
 
 let openCount = 0;
 export const isDialogOpen = () => openCount > 0;
@@ -295,6 +297,187 @@ export function macroManagerDialog(deps: MacroDialogDeps) {
   openModal('Macros', body, [{ label: 'Done', primary: true }], { wide: true, onClose: () => void unsubscribe() });
 }
 
+// ---- Settings ---------------------------------------------------------------------------
+
+export interface SettingsDialogDeps {
+  /** Rewrite every equation in the open document to the given inverse-trig style; returns how many changed. */
+  convertInverseTrig: (style: NotationPrefs['inverseTrig']) => number;
+}
+
+export function settingsDialog(deps: SettingsDialogDeps) {
+  type Opt = { value: string; label: string; preview?: string };
+  const body = h('div.settings');
+  const controls: (() => void)[] = [];
+
+  const section = (title: string, hint?: string) => {
+    body.append(h('h3.settings-head', {}, title));
+    if (hint) body.append(h('p.hint.settings-hint', {}, hint));
+  };
+
+  /** A dropdown row. `get`/`set` read and write one setting; `preview` renders math next to it. */
+  const select = (label: string, options: Opt[], get: () => string, set: (v: string) => void, note?: string) => {
+    const sel = h('select', { 'aria-label': label }, options.map((o) => h('option', { value: o.value }, o.label))) as HTMLSelectElement;
+    const preview = h('span.settings-preview');
+    if (!options.some((o) => o.preview)) preview.hidden = true;
+    const sync = () => {
+      sel.value = get();
+      const o = options.find((x) => x.value === sel.value);
+      preview.innerHTML = o?.preview ? renderLatex(o.preview) : '';
+    };
+    sel.addEventListener('change', () => {
+      set(sel.value);
+      sync();
+    });
+    controls.push(sync);
+    body.append(
+      h('label.settings-row', {}, h('span.settings-label', {}, label, note ? h('small', {}, note) : null), h('span.settings-control', {}, sel, preview)),
+    );
+    sync();
+    return sel;
+  };
+
+  const toggle = (label: string, note: string, get: () => boolean, set: (v: boolean) => void) => {
+    const box = h('input', { type: 'checkbox', 'aria-label': label }) as HTMLInputElement;
+    const sync = () => (box.checked = get());
+    box.addEventListener('change', () => set(box.checked));
+    controls.push(sync);
+    body.append(h('label.settings-row', {}, h('span.settings-label', {}, label, h('small', {}, note)), h('span.settings-control', {}, box)));
+    sync();
+  };
+
+  const s = getSettings;
+  const notation = (patch: Partial<NotationPrefs>) => updateSettings({ notation: { ...s().notation, ...patch } });
+
+  section('Document');
+  const fontSel = select('Default font', FONT_CHOICES.map((f) => ({ value: f.value, label: f.label })), () => s().font, (v) => updateSettings({ font: v }));
+  fontSel.querySelectorAll('option').forEach((o) => (o.style.fontFamily = fontCss(o.value)));
+  select(
+    'Font size',
+    [10, 11, 12, 13, 14, 16].map((n) => ({ value: String(n), label: `${n} pt` })),
+    () => String(s().fontSize),
+    (v) => updateSettings({ fontSize: Number(v) }),
+  );
+  select(
+    'Line spacing',
+    [
+      { value: '1.25', label: 'Compact' },
+      { value: '1.55', label: 'Normal' },
+      { value: '1.9', label: 'Relaxed' },
+      { value: '2.4', label: 'Double' },
+    ],
+    () => String(s().lineSpacing),
+    (v) => updateSettings({ lineSpacing: Number(v) }),
+  );
+  select(
+    'Equation numbers',
+    [
+      { value: 'paren', label: '(1)  parentheses' },
+      { value: 'bracket', label: '[1]  brackets' },
+    ],
+    () => s().eqNumberStyle,
+    (v) => updateSettings({ eqNumberStyle: v as Settings['eqNumberStyle'] }),
+  );
+  toggle('Spell check', 'Underline misspelled words in text', () => s().spellcheck, (v) => updateSettings({ spellcheck: v }));
+  select(
+    'Theme',
+    [
+      { value: 'system', label: 'Match system' },
+      { value: 'light', label: 'Light' },
+      { value: 'dark', label: 'Dark' },
+    ],
+    () => s().theme,
+    (v) => updateSettings({ theme: v as Settings['theme'] }),
+  );
+
+  section('Math notation', 'Used by typing shortcuts, the ribbon, the symbol palette and quick search. Equations you already wrote are not changed.');
+  select(
+    'Inverse trig functions',
+    [
+      { value: 'arc', label: 'arcsin, arccos, arctan', preview: '\\arcsin x' },
+      { value: 'power', label: 'sin⁻¹, cos⁻¹, tan⁻¹', preview: '\\sin^{-1} x' },
+    ],
+    () => s().notation.inverseTrig,
+    (v) => notation({ inverseTrig: v as NotationPrefs['inverseTrig'] }),
+    'typing arcsin or asin',
+  );
+  const convertBtn = h('button.btn.small', {
+    onclick: () => {
+      const n = deps.convertInverseTrig(s().notation.inverseTrig);
+      convertBtn.textContent = n ? `Updated ${n} equation${n === 1 ? '' : 's'}` : 'Nothing to update';
+      setTimeout(() => (convertBtn.textContent = 'Apply to this document'), 2200);
+    },
+  }, 'Apply to this document');
+  body.append(h('div.settings-row.settings-sub', {}, h('span.settings-label', {}, h('small', {}, 'Rewrite inverse trig in the open document to match')), h('span.settings-control', {}, convertBtn)));
+  select(
+    'Multiplication',
+    [
+      { value: 'cdot', label: 'Dot  a · b', preview: 'a\\cdot b' },
+      { value: 'times', label: 'Cross  a × b', preview: 'a\\times b' },
+    ],
+    () => s().notation.multiply,
+    (v) => notation({ multiply: v as NotationPrefs['multiply'] }),
+    'typing *',
+  );
+  select(
+    'Differentials',
+    [
+      { value: 'italic', label: 'Italic  dx', preview: '\\int f(x)\\,dx' },
+      { value: 'upright', label: 'Upright  d x (ISO)', preview: '\\int f(x)\\,\\mathrm{d}x' },
+    ],
+    () => s().notation.differential,
+    (v) => notation({ differential: v as NotationPrefs['differential'] }),
+    'typing dx, integral templates',
+  );
+  select(
+    'Number sets',
+    [
+      { value: 'mathbb', label: 'Blackboard bold  ℝ', preview: '\\mathbb{R}' },
+      { value: 'mathbf', label: 'Bold  R', preview: '\\mathbf{R}' },
+    ],
+    () => s().notation.numberSets,
+    (v) => notation({ numberSets: v as NotationPrefs['numberSets'] }),
+    'typing RR, NN, ZZ, QQ, CC',
+  );
+  select(
+    'Vectors',
+    [
+      { value: 'arrow', label: 'Arrow over letter', preview: '\\vec{v}' },
+      { value: 'bold', label: 'Bold letter', preview: '\\mathbf{v}' },
+    ],
+    () => s().notation.vectors,
+    (v) => notation({ vectors: v as NotationPrefs['vectors'] }),
+    'typing vec',
+  );
+  select(
+    'Letter style',
+    [
+      { value: 'tex', label: 'TeX (italic x, upright Γ)' },
+      { value: 'iso', label: 'ISO (italic x and Γ)' },
+      { value: 'french', label: 'French (upright capitals)' },
+      { value: 'upright', label: 'All upright' },
+    ],
+    () => s().letterShape,
+    (v) => updateSettings({ letterShape: v as Settings['letterShape'] }),
+    'how variables are drawn',
+  );
+
+  section('Equation typing');
+  toggle('Auto-close brackets', 'Typing ( adds the matching )', () => s().smartFence, (v) => updateSettings({ smartFence: v }));
+  toggle('Smart superscripts', 'Leave the exponent after one digit (x²+…)', () => s().smartSuperscript, (v) => updateSettings({ smartSuperscript: v }));
+
+  openModal('Settings', body, [
+    {
+      label: 'Reset to defaults',
+      run: () => {
+        resetSettings();
+        controls.forEach((c) => c());
+        return false;
+      },
+    },
+    { label: 'Done', primary: true },
+  ]);
+}
+
 // ---- Shortcut reference --------------------------------------------------------------
 
 export function shortcutsDialog() {
@@ -311,7 +494,7 @@ export function shortcutsDialog() {
     ['\\frac␣  \\alpha␣  \\int␣', 'Start an equation with that command'],
     ['\\(  /  \\[', 'Inline / display equation'],
     ['# ## ### ####', 'Headings'],
-    ['-  1.  >', 'Lists and quotes'],
+    ['-  1.  a.  >', 'Bulleted, numbered, lettered lists; quotes'],
   ];
   const inMath: [string, string][] = [
     ['/', 'Fraction (a/b → a over b)'],

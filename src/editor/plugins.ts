@@ -119,7 +119,14 @@ function buildInputRules() {
         /^(\d+)\.\s$/,
         nodes.ordered_list,
         (m) => ({ order: +m[1] }),
-        (m, node) => node.childCount + node.attrs.order === +m[1],
+        (m, node) => node.attrs.listStyle === 'decimal' && node.childCount + node.attrs.order === +m[1],
+      ),
+      // "a. " or "a) " starts a lettered list.
+      wrappingInputRule(
+        /^a[.)]\s$/,
+        nodes.ordered_list,
+        { order: 1, listStyle: 'lower-alpha' },
+        () => false,
       ),
       textblockTypeInputRule(/^```$/, nodes.code_block),
     ],

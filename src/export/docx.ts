@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 import type { Mark, Node as PMNode } from 'prosemirror-model';
 import { ENV_KINDS, type EnvKind } from '../editor/schema';
 import { escapeXml as esc, latexToOmml } from './mathconv';
+import type { ExportOptions } from '../app/settings';
 
 /**
  * Writes a .docx (Office Open XML) package by hand. Equations become native
@@ -44,6 +45,8 @@ class DocxWriter {
   private nextNum = 2; // 1 = bullets
   private eqNo = 0;
   private envNo: Record<string, number> = {};
+
+  constructor(private opts: ExportOptions) {}
 
   run(text: string, marks: readonly Mark[], ctx: Ctx): string {
     const props: string[] = [];
@@ -157,7 +160,7 @@ class DocxWriter {
           const n = ++this.eqNo;
           const tabs = '<w:tabs><w:tab w:val="center" w:pos="4680"/><w:tab w:val="right" w:pos="9360"/></w:tabs>';
           this.body.push(
-            `<w:p>${this.pPr(ctx, { extra: tabs })}<w:r><w:tab/></w:r>${omml}<w:r><w:tab/><w:t>(${n})</w:t></w:r></w:p>`,
+            `<w:p>${this.pPr(ctx, { extra: tabs })}<w:r><w:tab/></w:r>${omml}<w:r><w:tab/><w:t>${this.opts.eqNumberStyle === 'bracket' ? `[${n}]` : `(${n})`}</w:t></w:r></w:p>`,
           );
         } else {
           this.body.push(`<w:p>${this.pPr(ctx, { align: 'center' })}<m:oMathPara>${omml}</m:oMathPara></w:p>`);
@@ -203,8 +206,9 @@ class DocxWriter {
         let numId = 1;
         if (node.type.name === 'ordered_list') {
           numId = this.nextNum++;
+          const abstractId = node.attrs.listStyle === 'lower-alpha' ? 2 : 1;
           this.nums.push(
-            `<w:num w:numId="${numId}"><w:abstractNumId w:val="1"/><w:lvlOverride w:ilvl="${level}"><w:startOverride w:val="${node.attrs.order ?? 1}"/></w:lvlOverride></w:num>`,
+            `<w:num w:numId="${numId}"><w:abstractNumId w:val="${abstractId}"/><w:lvlOverride w:ilvl="${level}"><w:startOverride w:val="${node.attrs.order ?? 1}"/></w:lvlOverride></w:num>`,
           );
         }
         node.forEach((item) => {
@@ -230,7 +234,11 @@ class DocxWriter {
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
-function stylesXml() {
+function stylesXml(opts: ExportOptions) {
+  const font = esc(opts.font);
+  const size = Math.round(opts.fontSize * 2);
+  // CSS line-height 1.55 looks like Word's 1.15 (276/240).
+  const line = Math.round((240 * opts.lineSpacing) / 1.35);
   const heading = (n: number, size: number, color: string) => `
   <w:style w:type="paragraph" w:styleId="Heading${n}">
     <w:name w:val="heading ${n}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/>
@@ -240,8 +248,8 @@ function stylesXml() {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="${W_NS}">
   <w:docDefaults>
-    <w:rPrDefault><w:rPr><w:rFonts w:ascii="Cambria" w:hAnsi="Cambria" w:eastAsia="Cambria" w:cs="Times New Roman"/><w:sz w:val="23"/><w:szCs w:val="23"/><w:lang w:val="en-US"/></w:rPr></w:rPrDefault>
-    <w:pPrDefault><w:pPr><w:spacing w:after="140" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault>
+    <w:rPrDefault><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:eastAsia="${font}" w:cs="${font}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/><w:lang w:val="en-US"/></w:rPr></w:rPrDefault>
+    <w:pPrDefault><w:pPr><w:spacing w:after="140" w:line="${line}" w:lineRule="auto"/></w:pPr></w:pPrDefault>
   </w:docDefaults>
   <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>
   ${heading(1, 36, '1F3864')}
@@ -268,17 +276,19 @@ function numberingXml(nums: string[]) {
     `<w:lvl w:ilvl="${i}"><w:start w:val="1"/><w:numFmt w:val="${fmt}"/><w:lvlText w:val="${text}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${(i + 1) * TWIPS_PER_LEVEL}" w:hanging="360"/></w:pPr></w:lvl>`;
   const bulletLvls = Array.from({ length: 9 }, (_, i) => lvl(i, 'bullet', bullets[i % 3])).join('');
   const numLvls = Array.from({ length: 9 }, (_, i) => lvl(i, fmts[i % 3], `%${i + 1}.`)).join('');
+  const letterLvls = Array.from({ length: 9 }, (_, i) => lvl(i, 'lowerLetter', `%${i + 1}.`)).join('');
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:numbering xmlns:w="${W_NS}">
   <w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="hybridMultilevel"/>${bulletLvls}</w:abstractNum>
   <w:abstractNum w:abstractNumId="1"><w:multiLevelType w:val="hybridMultilevel"/>${numLvls}</w:abstractNum>
+  <w:abstractNum w:abstractNumId="2"><w:multiLevelType w:val="hybridMultilevel"/>${letterLvls}</w:abstractNum>
   <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
   ${nums.join('\n  ')}
 </w:numbering>`;
 }
 
-export async function exportDocx(doc: PMNode, title: string): Promise<Uint8Array> {
-  const w = new DocxWriter();
+export async function exportDocx(doc: PMNode, title: string, opts: ExportOptions): Promise<Uint8Array> {
+  const w = new DocxWriter(opts);
   doc.forEach((node) => w.block(node, {}));
 
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -327,7 +337,7 @@ ${w.body.join('\n')}
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>MathMirror</Application></Properties>`,
   );
   zip.file('word/document.xml', documentXml);
-  zip.file('word/styles.xml', stylesXml());
+  zip.file('word/styles.xml', stylesXml(opts));
   zip.file('word/numbering.xml', numberingXml(w.nums));
   zip.file(
     'word/_rels/document.xml.rels',

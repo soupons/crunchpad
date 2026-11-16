@@ -1,12 +1,14 @@
 import { DOMSerializer, type Node as PMNode } from 'prosemirror-model';
 import { schema } from '../editor/schema';
 import { escapeXml, latexToMathML } from './mathconv';
+import { fontCss, type ExportOptions } from '../app/settings';
 
 /**
  * Standalone HTML with MathML equations (renders natively in modern browsers,
  * and pastes into Word / Google Docs as real equations).
  */
-export function exportHtml(doc: PMNode, title: string): string {
+export function exportHtml(doc: PMNode, title: string, opts: ExportOptions): string {
+  const eqLabel = opts.eqNumberStyle === 'bracket' ? '"[" counter(eq) "]"' : '"(" counter(eq) ")"';
   const serializer = DOMSerializer.fromSchema(schema);
   const frag = serializer.serializeFragment(doc.content);
   const host = document.createElement('div');
@@ -43,12 +45,12 @@ export function exportHtml(doc: PMNode, title: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeXml(title)}</title>
 <style>
-  body { font-family: Cambria, Georgia, serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.55; color: #1b1b1f; }
+  body { font-family: ${fontCss(opts.font)}; font-size: ${opts.fontSize}pt; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: ${opts.lineSpacing}; color: #1b1b1f; }
   math { font-size: 1.08em; }
   div.math-display { text-align: center; margin: 1em 0; position: relative; }
   body { counter-reset: eq; }
   div.math-display[data-numbered="true"] { counter-increment: eq; }
-  div.math-display[data-numbered="true"]::after { content: "(" counter(eq) ")"; position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+  div.math-display[data-numbered="true"]::after { content: ${eqLabel}; position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
   section.math-env { border-left: 3px solid #3f51b5; padding: .2em 0 .2em 1em; margin: 1em 0; }
   section.math-env::before { content: attr(data-label) "."; font-weight: bold; }
   section.env-proof { border: none; padding-left: 0; }

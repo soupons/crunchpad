@@ -4,9 +4,10 @@ import type { MarkType, NodeType, Node as PMNode } from 'prosemirror-model';
 import { NodeSelection, TextSelection, type Command, type EditorState } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 import type { MathfieldElement } from 'mathlive';
-import { schema, type Align, type EnvKind } from './schema';
+import { schema, type Align, type EnvKind, type ListStyle } from './schema';
 import { mathViewAt } from './mathview';
 import { focusMathfield, getActiveMathfield } from '../math/mathfield';
+import { applyNotation } from '../math/notation';
 
 const { nodes, marks } = schema;
 
@@ -79,8 +80,40 @@ export const setHeading = (level: number) => setBlockType(nodes.heading, { level
 export const setCodeBlock = setBlockType(nodes.code_block);
 export const toggleBulletList: Command = (s, d) =>
   inAncestor(s, nodes.bullet_list) ? liftListItem(nodes.list_item)(s, d) : wrapInList(nodes.bullet_list)(s, d);
-export const toggleOrderedList: Command = (s, d) =>
-  inAncestor(s, nodes.ordered_list) ? liftListItem(nodes.list_item)(s, d) : wrapInList(nodes.ordered_list)(s, d);
+/** The innermost list (bulleted or ordered) around the selection, with its position. */
+function nearestList(state: EditorState): { node: PMNode; pos: number } | null {
+  const { $from } = state.selection;
+  for (let d = $from.depth; d > 0; d--) {
+    const n = $from.node(d);
+    if (n.type === nodes.bullet_list || n.type === nodes.ordered_list) return { node: n, pos: $from.before(d) };
+  }
+  return null;
+}
+
+/** Style of the innermost ordered list around the selection, if that's the innermost list. */
+export function orderedListStyle(state: EditorState): ListStyle | null {
+  const list = nearestList(state);
+  return list?.node.type === nodes.ordered_list ? (list.node.attrs.listStyle as ListStyle) : null;
+}
+
+/**
+ * Numbered (1. 2. 3.) or lettered (a. b. c.) list. Inside a list of the same
+ * kind this removes the list; inside a different list it switches its style.
+ */
+export function toggleOrderedListStyle(listStyle: ListStyle): Command {
+  return (state, dispatch) => {
+    const list = nearestList(state);
+    if (!list) return wrapInList(nodes.ordered_list, { listStyle })(state, dispatch);
+    if (list.node.type === nodes.ordered_list && list.node.attrs.listStyle === listStyle) {
+      return liftListItem(nodes.list_item)(state, dispatch);
+    }
+    const attrs = list.node.type === nodes.ordered_list ? { ...list.node.attrs, listStyle } : { order: 1, listStyle };
+    if (dispatch) dispatch(state.tr.setNodeMarkup(list.pos, nodes.ordered_list, attrs));
+    return true;
+  };
+}
+export const toggleOrderedList = toggleOrderedListStyle('decimal');
+export const toggleLetteredList = toggleOrderedListStyle('lower-alpha');
 export const toggleBlockquote: Command = (s, d) =>
   inAncestor(s, nodes.blockquote) ? lift(s, d) : wrapIn(nodes.blockquote)(s, d);
 
@@ -155,6 +188,8 @@ export interface InsertMathOptions {
   target?: MathfieldElement | null;
   /** When false, never insert into an existing mathfield. */
   intoActive?: boolean;
+  /** Insert the LaTeX exactly as given (user macros); otherwise adapt it to the notation settings. */
+  raw?: boolean;
 }
 
 /**
@@ -163,6 +198,7 @@ export interface InsertMathOptions {
  * created and focused with the first placeholder selected.
  */
 export function insertMath(view: EditorView, latex: string, opts: InsertMathOptions = {}) {
+  if (!opts.raw) latex = applyNotation(latex);
   const target = opts.target ?? (opts.intoActive === false ? null : getActiveMathfield());
   if (target && target.isConnected && !opts.display) {
     focusMathfield(target);

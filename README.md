@@ -36,6 +36,20 @@ become symbols, `Tab` jumps between empty slots, arrow keys / `Enter` / `Esc`
 leave the equation, and `Backspace` in an empty equation deletes it.
 `Ctrl+Alt+M` opens the raw LaTeX source for the current equation.
 
+Lists: type `- `, `1. ` or `a. ` at the start of a line for a bulleted,
+numbered or lettered (a. b. c.) list, or use the Paragraph buttons.
+
+## Settings (⚙ in the ribbon)
+
+Stored per device. **Document**: default font, size, line spacing, equation
+number style `(1)` / `[1]`, spell check, theme — these also apply to exports.
+**Math notation**: `arcsin` vs `sin⁻¹` (with a button to convert the open
+document), `*` as `·` or `×`, italic `dx` vs upright `d`, `ℝ` vs bold `R`,
+arrow vs bold vectors, and the letter style (TeX / ISO / French / upright).
+Notation choices affect typing shortcuts and the built-in templates; equations
+you already wrote are left alone. **Equation typing**: auto-closing brackets
+and smart superscripts.
+
 ## Quick search (`Ctrl+Space`)
 
 Opens a search bar at the bottom of the window. It searches across:

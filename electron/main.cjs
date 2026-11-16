@@ -198,6 +198,7 @@ async function buildMenu() {
         item('Zoom Out', 'view-zoom-out', 'CmdOrCtrl+-'),
         item('Reset Zoom', 'view-zoom-reset', 'CmdOrCtrl+0'),
         item('Toggle Dark Mode', 'view-theme'),
+        item('Settings…', 'app-settings'),
         item('Math Keyboard', 'math-keyboard'),
         { type: 'separator' },
         { role: 'togglefullscreen' },
