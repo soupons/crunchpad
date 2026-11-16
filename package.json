@@ -1,0 +1,56 @@
+{
+  "name": "mathmirror",
+  "productName": "MathMirror",
+  "version": "0.1.0",
+  "description": "A ProseMirror-based document editor built for writing inline math.",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "assets": "node scripts/copy-mathlive-assets.mjs",
+    "predev": "npm run assets",
+    "dev": "vite",
+    "prebuild": "npm run assets",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "desktop": "npm run build && electron .",
+    "desktop:dev": "node scripts/desktop-dev.mjs",
+    "dist:win": "npm run build && npx electron-builder --win --publish never",
+    "dist:mac": "npm run build && npx electron-builder --mac --publish never",
+    "dist:linux": "npm run build && npx electron-builder --linux --publish never"
+  },
+  "build": {
+    "appId": "app.mathmirror.editor",
+    "productName": "MathMirror",
+    "files": ["dist/**", "electron/**", "package.json"],
+    "directories": { "output": "release" },
+    "fileAssociations": [
+      { "ext": "mathdoc", "name": "MathMirror Document", "role": "Editor", "mimeType": "application/x-mathmirror" }
+    ],
+    "win": { "target": ["nsis"] },
+    "mac": { "target": ["dmg"], "category": "public.app-category.productivity" },
+    "linux": { "target": ["AppImage"], "category": "Office" }
+  },
+  "dependencies": {
+    "jszip": "^3.10.2",
+    "mathlive": "^0.111.4",
+    "mathml2omml": "^0.5.0",
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-dropcursor": "^1.8.4",
+    "prosemirror-gapcursor": "^1.4.1",
+    "prosemirror-history": "^1.5.1",
+    "prosemirror-inputrules": "^1.6.0",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.13",
+    "prosemirror-schema-basic": "^1.2.5",
+    "prosemirror-schema-list": "^1.6.0",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.42.9"
+  },
+  "devDependencies": {
+    "electron": "^45.3.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}
