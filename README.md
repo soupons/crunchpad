@@ -5,7 +5,25 @@ stored as LaTeX but edited visually (via [MathLive](https://cortexjs.io/mathlive
 so you don't need to know LaTeX to use it. It runs in a browser or as a desktop
 app (Windows / macOS / Linux, via Electron).
 
-## Quick start
+## Download
+
+| Platform | Download |
+| --- | --- |
+| **Windows** (10/11, 64-bit) | [crunchpad-Setup.exe](https://github.com/soupons/crunchpad/releases/latest/download/crunchpad-Setup.exe) |
+| **macOS** (Apple Silicon and Intel) | [crunchpad-mac.dmg](https://github.com/soupons/crunchpad/releases/latest/download/crunchpad-mac.dmg) |
+
+Older versions and release notes are on the [Releases page](https://github.com/soupons/crunchpad/releases).
+
+The installers aren't code-signed yet, so the first launch shows a warning:
+
+- **Windows:** if SmartScreen says "Windows protected your PC", click
+  **More info → Run anyway**.
+- **macOS:** open the `.dmg` and drag crunchpad into Applications. The first
+  time you open it, macOS will block it. Go to **System Settings → Privacy &
+  Security**, scroll down and click **Open Anyway**. If macOS says the app "is
+  damaged", run `xattr -cr /Applications/crunchpad.app` in Terminal and try again.
+
+## Quick start (from source)
 
 ```bash
 npm install
@@ -15,8 +33,13 @@ npm run desktop        # production build in the desktop shell
 ```
 
 Installers: `npm run dist:win`, `npm run dist:mac` or `npm run dist:linux`
-(uses electron-builder via `npx`; output goes to `release/`). Build the macOS
-installer on a Mac.
+(output goes to `release/`). Build the macOS installer on a Mac.
+
+**Publishing a release:** bump `version` in `package.json`, then push a tag
+(`git tag v0.1.0 && git push origin v0.1.0`). The
+[Release workflow](.github/workflows/release.yml) builds the Windows and macOS
+installers on GitHub and attaches them to a new release, which is what the
+download links above point to.
 
 ## Writing math
 

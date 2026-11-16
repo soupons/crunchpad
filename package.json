@@ -16,23 +16,68 @@
     "typecheck": "tsc --noEmit",
     "desktop": "npm run build && electron .",
     "desktop:dev": "node scripts/desktop-dev.mjs",
-    "dist:win": "npm run build && npx electron-builder --win --publish never",
-    "dist:mac": "npm run build && npx electron-builder --mac --publish never",
-    "dist:linux": "npm run build && npx electron-builder --linux --publish never"
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never"
   },
   "build": {
     "appId": "app.crunchpad.editor",
     "productName": "crunchpad",
     "icon": "electron/icon.png",
-    "files": ["dist/**", "electron/**", "package.json"],
-    "directories": { "output": "release" },
-    "fileAssociations": [
-      { "ext": "crunchpad", "name": "crunchpad document", "role": "Editor", "mimeType": "application/x-crunchpad" },
-      { "ext": "mathdoc", "name": "crunchpad document (legacy)", "role": "Editor", "mimeType": "application/x-mathmirror" }
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
     ],
-    "win": { "target": ["nsis"] },
-    "mac": { "target": ["dmg"], "category": "public.app-category.productivity" },
-    "linux": { "target": ["AppImage"], "category": "Office" }
+    "directories": {
+      "output": "release"
+    },
+    "fileAssociations": [
+      {
+        "ext": "crunchpad",
+        "name": "crunchpad document",
+        "role": "Editor",
+        "mimeType": "application/x-crunchpad"
+      },
+      {
+        "ext": "mathdoc",
+        "name": "crunchpad document (legacy)",
+        "role": "Editor",
+        "mimeType": "application/x-mathmirror"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "crunchpad-Setup.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "artifactName": "crunchpad-mac.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office",
+      "artifactName": "crunchpad-linux.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "artifactName": "crunchpad-Setup.${ext}"
+    }
   },
   "dependencies": {
     "jszip": "^3.10.2",
@@ -52,6 +97,7 @@
   },
   "devDependencies": {
     "electron": "^45.3.2",
+    "electron-builder": "26.18.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
   }
