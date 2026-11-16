@@ -38,6 +38,7 @@ import { exportDocx } from '../export/docx';
 import { exportLatex } from '../export/latex';
 import { exportHtml } from '../export/html';
 import { WELCOME_DOC } from './welcome';
+import { feedbackConfigured, openFeedback } from './feedback';
 
 const NATIVE_EXT = 'crunchpad';
 /** Files saved before the rename from MathMirror; still opened as native documents. */
@@ -739,6 +740,13 @@ export class App {
       { id: 'view-zoom-out', title: 'Zoom out', category: 'View', shortcut: 'Mod--', global: true, run: () => this.setZoom(this.zoom - 0.1) },
       { id: 'view-zoom-reset', title: 'Reset zoom', category: 'View', shortcut: 'Mod-0', global: true, run: () => this.setZoom(1) },
       // Help
+      {
+        id: 'help-feedback',
+        title: 'Report an issue or suggest a feature',
+        category: 'Help',
+        keywords: 'feedback bug issue suggestion idea request github report',
+        run: () => (feedbackConfigured() ? openFeedback() : this.status.notice('Feedback link is not set up yet (FEEDBACK_REPO in src/app/feedback.ts).')),
+      },
       { id: 'help-shortcuts', title: 'Keyboard shortcuts & tips', category: 'Help', shortcut: 'F1', global: true, keywords: 'help keys cheat sheet', run: () => shortcutsDialog() },
       {
         id: 'help-welcome',

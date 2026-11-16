@@ -263,6 +263,17 @@ kbd {
 @media (max-width: 1500px) { .rb-search kbd { display: none; } }
 @media (max-width: 1280px) { .rb-search-label { display: none; } }
 .rb-search kbd { margin-left: auto; }
+.rb-feedback {
+  height: 32px;
+  padding: 0 11px;
+  gap: 6px;
+  background: #3b5bdb;
+  color: #fff;
+  font-weight: 600;
+}
+.rb-feedback:hover { background: #3249c0; }
+.rb-feedback:active { background: #2a3ea6; }
+@media (max-width: 1280px) { .rb-feedback-label { display: none; } .rb-feedback { width: 32px; padding: 0; justify-content: center; } }
 .rb-round { width: 32px; height: 32px; border-radius: 50%; font-size: 15px; border: 1px solid var(--border); }
 
 /* ---- popovers / palette ---- */

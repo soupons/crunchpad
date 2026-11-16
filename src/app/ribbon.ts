@@ -326,6 +326,7 @@ export class Ribbon {
       'div.rb-right',
       {},
       this.btn({ cmd: 'quick-search', html: '<span class="qs-glyph">⌕</span><span class="rb-search-label">Search</span>', cls: 'rb-search', title: 'Quick search: symbols, commands, styles, macros' }),
+      this.btn({ cmd: 'help-feedback', html: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="rb-feedback-label">Feedback</span>', cls: 'rb-feedback', title: 'Report an issue or suggest a feature' }),
       this.btn({ cmd: 'math-keyboard', label: '⌨', cls: 'rb-round', title: 'Math keyboard' }),
       this.btn({ cmd: 'help-shortcuts', label: '?', cls: 'rb-round', title: 'Shortcuts & tips' }),
       this.btn({ cmd: 'view-theme', label: '◐', cls: 'rb-round', title: 'Toggle dark mode' }),
