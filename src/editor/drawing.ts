@@ -270,7 +270,7 @@ export class DrawingView implements NodeView {
     });
     this.box.addEventListener('pointerdown', () => this.setActive(true));
     this.box.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('mathmirror:zoom', this.onZoom);
+    window.addEventListener('crunchpad:zoom', this.onZoom);
     allViews.add(this);
   }
 
@@ -300,7 +300,7 @@ export class DrawingView implements NodeView {
   }
   destroy() {
     document.removeEventListener('pointerdown', this.onDocDown, true);
-    window.removeEventListener('mathmirror:zoom', this.onZoom);
+    window.removeEventListener('crunchpad:zoom', this.onZoom);
     allViews.delete(this);
   }
 

@@ -23,7 +23,7 @@ export function exportHtml(doc: PMNode, title: string, opts: ExportOptions): str
       /<\/math>$/,
       `<annotation encoding="application/x-tex">${escapeXml(latex)}</annotation></math>`,
     );
-    // Keep the LaTeX as an annotation so pasting back into MathMirror restores it.
+    // Keep the LaTeX as an annotation so pasting back into crunchpad restores it.
     const math = wrapper.querySelector('math');
     if (math) {
       const inner = [...math.childNodes].filter((n) => !(n instanceof Element && n.tagName === 'annotation'));

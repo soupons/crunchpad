@@ -1,6 +1,6 @@
 /**
  * File access that works in both the browser and the Electron desktop app.
- * The desktop preload script exposes `window.mathmirrorNative`; in a browser we
+ * The desktop preload script exposes `window.crunchpadNative`; in a browser we
  * use the File System Access API where available and fall back to
  * download/upload otherwise.
  */
@@ -47,13 +47,13 @@ export interface NativeBridge {
 
 declare global {
   interface Window {
-    mathmirrorNative?: NativeBridge;
+    crunchpadNative?: NativeBridge;
     showOpenFilePicker?: (opts?: unknown) => Promise<FileSystemFileHandle[]>;
     showSaveFilePicker?: (opts?: unknown) => Promise<FileSystemFileHandle>;
   }
 }
 
-export const native: NativeBridge | undefined = window.mathmirrorNative;
+export const native: NativeBridge | undefined = window.crunchpadNative;
 export const isDesktop = !!native;
 
 const toPickerTypes = (filters: FileFilter[]) =>

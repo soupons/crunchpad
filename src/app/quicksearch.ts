@@ -48,7 +48,7 @@ const KIND_LABEL: Record<QSKind, string> = {
   latex: 'LaTeX',
 };
 
-const RECENT_KEY = 'mathmirror:qs-recent';
+const RECENT_KEY = 'crunchpad:qs-recent';
 function loadRecent(): string[] {
   try {
     return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');

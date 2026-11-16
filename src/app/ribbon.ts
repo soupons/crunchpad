@@ -2,6 +2,7 @@ import { h, keepFocus } from './dom';
 import { getCommand, runCommand, shortcutLabel } from './registry';
 import { renderLatex } from './dialogs';
 import { CATEGORIES, MATH_CATALOG, type MathCategory } from '../math/catalog';
+import { LOGO_SVG } from './logo';
 
 /**
  * The top banner: panels of related controls laid out left to right
@@ -331,7 +332,8 @@ export class Ribbon {
       this.btn({ cmd: 'app-settings', label: '⚙', cls: 'rb-round', title: 'Settings: font, math notation, typing' }),
     );
 
-    this.root.replaceChildren(left, right);
+    const brand = h('div.rb-brand', { title: 'crunchpad' }, h('span.logo', { html: LOGO_SVG }), h('span', {}, 'crunchpad'));
+    this.root.replaceChildren(brand, left, right);
   }
 
 

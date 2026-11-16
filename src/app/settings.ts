@@ -43,8 +43,8 @@ export const DEFAULT_SETTINGS: Settings = {
   smartSuperscript: true,
 };
 
-const KEY = 'mathmirror:settings';
-const LEGACY_THEME_KEY = 'mathmirror:theme';
+const KEY = 'crunchpad:settings';
+const LEGACY_THEME_KEY = 'crunchpad:theme'; // from the old dark-mode toggle
 
 let current: Settings = load();
 setNotation(current.notation);

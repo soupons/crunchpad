@@ -1,3 +1,4 @@
+import './app/migrate';
 import 'mathlive/fonts.css';
 import 'mathlive/static.css';
 import './styles.css';
@@ -12,4 +13,4 @@ const app = new App({
 app.start();
 
 // Handy for debugging from the devtools console.
-(window as unknown as { mathmirror: App }).mathmirror = app;
+(window as unknown as { crunchpad: App }).crunchpad = app;

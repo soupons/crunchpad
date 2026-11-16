@@ -13,7 +13,7 @@ console.log(`Vite dev server at ${url}`);
 
 const child = spawn(electronPath, ['.'], {
   stdio: 'inherit',
-  env: { ...process.env, MATHMIRROR_DEV_URL: url },
+  env: { ...process.env, CRUNCHPAD_DEV_URL: url },
 });
 child.on('exit', async (code) => {
   await server.close();

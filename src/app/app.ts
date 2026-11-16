@@ -39,12 +39,14 @@ import { exportLatex } from '../export/latex';
 import { exportHtml } from '../export/html';
 import { WELCOME_DOC } from './welcome';
 
-const NATIVE_EXT = 'mathdoc';
+const NATIVE_EXT = 'crunchpad';
+/** Files saved before the rename from MathMirror; still opened as native documents. */
+const LEGACY_EXT = 'mathdoc';
 const DOC_FILTERS: FileFilter[] = [
-  { name: 'MathMirror document', extensions: [NATIVE_EXT] },
+  { name: 'crunchpad document', extensions: [NATIVE_EXT, LEGACY_EXT] },
   { name: 'Text with $math$ (Markdown, TeX, plain text)', extensions: ['md', 'txt', 'tex'] },
 ];
-const RECOVERY_KEY = 'mathmirror:recovery';
+const RECOVERY_KEY = 'crunchpad:recovery';
 
 interface FileInfo {
   name: string;
@@ -161,7 +163,7 @@ export class App {
     this.fitPageToDrawings();
     this.ribbon?.update();
     this.status?.update(this.view.state.doc, this.file, this.zoom);
-    const title = `${this.file.dirty ? '• ' : ''}${this.file.name} — MathMirror`;
+    const title = `${this.file.dirty ? '• ' : ''}${this.file.name} — crunchpad`;
     document.title = title;
     native?.setTitle(title);
   }
@@ -233,19 +235,19 @@ export class App {
   private setZoom(z: number) {
     this.zoom = Math.round(Math.max(0.5, Math.min(2.5, z)) * 10) / 10;
     this.els.page.style.setProperty('--zoom', String(this.zoom));
-    window.dispatchEvent(new Event('mathmirror:zoom'));
+    window.dispatchEvent(new Event('crunchpad:zoom'));
     this.refreshUI();
   }
 
   // ---- Files ----------------------------------------------------------------------
 
   private serialize(): string {
-    return JSON.stringify({ app: 'MathMirror', version: 1, doc: this.view.state.doc.toJSON() }, null, 1);
+    return JSON.stringify({ app: 'crunchpad', version: 1, doc: this.view.state.doc.toJSON() }, null, 1);
   }
 
   private parseFile(name: string, text: string): PMNode {
     const lower = name.toLowerCase();
-    if (lower.endsWith('.mathdoc') || lower.endsWith('.json')) {
+    if (lower.endsWith(`.${NATIVE_EXT}`) || lower.endsWith(`.${LEGACY_EXT}`) || lower.endsWith('.json')) {
       const data = JSON.parse(text);
       return PMNode.fromJSON(schema, data.doc ?? data);
     }
@@ -303,7 +305,7 @@ export class App {
       const f = await openFile(DOC_FILTERS);
       if (!f) return;
       const doc = this.parseFile(f.name, f.text);
-      const isNative = /\.(mathdoc|json)$/i.test(f.name);
+      const isNative = /\.(crunchpad|mathdoc|json)$/i.test(f.name);
       const name = isNative ? f.name : f.name.replace(/\.[^.]+$/, '') + '.' + NATIVE_EXT;
       this.loadDoc(doc, name, isNative ? { name: f.name, path: f.path, handle: f.handle } : null);
       if (f.path) this.addRecent(f.path);
@@ -745,7 +747,7 @@ export class App {
         keywords: 'tutorial guide intro example',
         run: async () => {
           if (!(await this.confirmDiscard())) return;
-          this.loadDoc(PMNode.fromJSON(schema, WELCOME_DOC), 'Welcome.mathdoc', null);
+          this.loadDoc(PMNode.fromJSON(schema, WELCOME_DOC), `Welcome.${NATIVE_EXT}`, null);
         },
       },
     );

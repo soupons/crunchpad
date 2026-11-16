@@ -1,8 +1,8 @@
-// Exposes a small, explicit file/menu API to the page as `window.mathmirrorNative`.
+// Exposes a small, explicit file/menu API to the page as `window.crunchpadNative`.
 // The page never gets Node.js or arbitrary IPC access.
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('mathmirrorNative', {
+contextBridge.exposeInMainWorld('crunchpadNative', {
   openFile: (filters) => ipcRenderer.invoke('open-file', filters),
   readFile: (path) => ipcRenderer.invoke('read-file', path),
   saveFile: (path, data) => ipcRenderer.invoke('save-file', path, data),

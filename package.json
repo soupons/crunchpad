@@ -1,6 +1,6 @@
 {
-  "name": "mathmirror",
-  "productName": "MathMirror",
+  "name": "crunchpad",
+  "productName": "crunchpad",
   "version": "0.1.0",
   "description": "A ProseMirror-based document editor built for writing inline math.",
   "private": true,
@@ -21,12 +21,14 @@
     "dist:linux": "npm run build && npx electron-builder --linux --publish never"
   },
   "build": {
-    "appId": "app.mathmirror.editor",
-    "productName": "MathMirror",
+    "appId": "app.crunchpad.editor",
+    "productName": "crunchpad",
+    "icon": "electron/icon.png",
     "files": ["dist/**", "electron/**", "package.json"],
     "directories": { "output": "release" },
     "fileAssociations": [
-      { "ext": "mathdoc", "name": "MathMirror Document", "role": "Editor", "mimeType": "application/x-mathmirror" }
+      { "ext": "crunchpad", "name": "crunchpad document", "role": "Editor", "mimeType": "application/x-crunchpad" },
+      { "ext": "mathdoc", "name": "crunchpad document (legacy)", "role": "Editor", "mimeType": "application/x-mathmirror" }
     ],
     "win": { "target": ["nsis"] },
     "mac": { "target": ["dmg"], "category": "public.app-category.productivity" },

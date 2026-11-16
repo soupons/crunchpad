@@ -20,7 +20,7 @@ export interface Macro {
   preview?: string;
 }
 
-const KEY = 'mathmirror:macros';
+const KEY = 'crunchpad:macros';
 let macros: Macro[] = [];
 const listeners = new Set<() => void>();
 

@@ -9,7 +9,7 @@ const li = (...content: unknown[]) => ({ type: 'list_item', content: [p(...conte
 export const WELCOME_DOC = {
   type: 'doc',
   content: [
-    { type: 'heading', attrs: { level: 1 }, content: [t('Welcome to MathMirror')] },
+    { type: 'heading', attrs: { level: 1 }, content: [t('Welcome to crunchpad')] },
     p(
       t('A document editor where equations live right in your text, like '),
       m('e^{i\\pi}+1=0'),

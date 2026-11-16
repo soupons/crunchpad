@@ -1,4 +1,4 @@
-# MathMirror
+# Ξ crunchpad
 
 A ProseMirror document editor built for writing **inline math**. Equations are
 stored as LaTeX but edited visually (via [MathLive](https://cortexjs.io/mathlive/)),
@@ -44,7 +44,7 @@ numbered or lettered (a. b. c.) list, or use the Paragraph buttons.
 Right-click anywhere in the document for Cut / Copy / Paste. On an equation
 you also get **Copy LaTeX**, **Copy as image** (a crisp PNG you can paste into
 Word, Slides, chat apps…), Edit LaTeX and Delete. Copied equations paste back
-into MathMirror as real, editable equations.
+into crunchpad as real, editable equations.
 
 ## Drawings (Draw → Drawing)
 
@@ -98,9 +98,9 @@ Macros are stored per user (browser storage / app profile).
 
 ## Files and export
 
-- Native format: **`.mathdoc`** (ProseMirror JSON). The desktop app registers
-  it as a file type.
-- **Open/import**: `.mathdoc`, plus `.md`, `.txt`, `.tex` (math delimiters,
+- Native format: **`.crunchpad`** (ProseMirror JSON). The desktop app registers
+  it as a file type. Files from before the rename (`.mathdoc`) still open.
+- **Open/import**: `.crunchpad` / `.mathdoc`, plus `.md`, `.txt`, `.tex` (math delimiters,
   headings and equations are converted).
 - **Export**:
   - **Word (.docx)**: equations become native, editable Word equations (OMML).

@@ -1,14 +1,28 @@
-// MathMirror desktop shell (Windows / macOS / Linux).
+// crunchpad desktop shell (Windows / macOS / Linux).
 // The editor itself is the same web app; this file adds native file dialogs,
 // menus, PDF export and file associations.
 const { app, BrowserWindow, ClipboardItem, Menu, clipboard, dialog, ipcMain, nativeImage, shell } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-const DEV_URL = process.env.MATHMIRROR_DEV_URL;
-/** `MATHMIRROR_SMOKE_TEST=<out.pdf>`: load hidden, verify the app, print a PDF, quit. */
-const SMOKE_TEST = process.env.MATHMIRROR_SMOKE_TEST;
+const DEV_URL = process.env.CRUNCHPAD_DEV_URL;
+/** `CRUNCHPAD_SMOKE_TEST=<out.pdf>`: load hidden, verify the app, print a PDF, quit. */
+const SMOKE_TEST = process.env.CRUNCHPAD_SMOKE_TEST;
 const isMac = process.platform === 'darwin';
+
+// The app used to be called MathMirror. On first launch under the new name, carry
+// over its profile (settings, macros, recovery copy, recent files). Must run
+// before the app is ready, i.e. before Chromium opens the profile.
+(function migrateUserData() {
+  try {
+    const fsSync = require('node:fs');
+    const next = app.getPath('userData');
+    const prev = path.join(app.getPath('appData'), 'MathMirror');
+    if (!fsSync.existsSync(next) && fsSync.existsSync(prev)) fsSync.cpSync(prev, next, { recursive: true });
+  } catch (err) {
+    console.warn('Could not migrate MathMirror settings:', err);
+  }
+})();
 
 /** @type {BrowserWindow | null} */
 let win = null;
@@ -17,7 +31,7 @@ let lastDir = app.getPath('documents');
 let pendingOpenPath = findFileArg(process.argv);
 
 function findFileArg(argv) {
-  return argv.slice(1).find((a) => /\.(mathdoc|md|txt|tex)$/i.test(a) && !a.startsWith('-')) ?? null;
+  return argv.slice(1).find((a) => /\.(crunchpad|mathdoc|md|txt|tex)$/i.test(a) && !a.startsWith('-')) ?? null;
 }
 
 // ---- Recent files ---------------------------------------------------------
@@ -44,7 +58,8 @@ function createWindow() {
     height: 920,
     minWidth: 720,
     minHeight: 480,
-    title: 'MathMirror',
+    title: 'crunchpad',
+    icon: path.join(__dirname, 'icon.png'),
     backgroundColor: '#e9ebef',
     show: !SMOKE_TEST,
     webPreferences: {
@@ -88,7 +103,7 @@ function createWindow() {
       defaultId: 0,
       cancelId: 0,
       message: 'You have unsaved changes.',
-      detail: 'Your work is also kept as a recovery copy and will be restored next time you open MathMirror.',
+      detail: 'Your work is also kept as a recovery copy and will be restored next time you open crunchpad.',
     });
     if (choice === 0) e.preventDefault();
   });
@@ -101,7 +116,7 @@ async function runSmokeTest() {
   try {
     await new Promise((r) => setTimeout(r, 1500));
     const report = await win.webContents.executeJavaScript(`({
-      bridge: typeof window.mathmirrorNative,
+      bridge: typeof window.crunchpadNative,
       ribbonButtons: document.querySelectorAll('#ribbon button').length,
       equations: document.querySelectorAll('math-field').length,
       title: document.title,
@@ -324,7 +339,7 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
 
-  // macOS: double-clicking a .mathdoc in Finder.
+  // macOS: double-clicking a .crunchpad (or legacy .mathdoc) in Finder.
   app.on('open-file', (e, p) => {
     e.preventDefault();
     if (win) win.webContents.send('open-path', p);
