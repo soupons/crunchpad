@@ -159,6 +159,27 @@ export const insertHorizontalRule: Command = (state, dispatch) => {
   return true;
 };
 
+/**
+ * Insert a drawing area below the top-level block containing the cursor,
+ * centred on the page, and select it so its toolbar shows.
+ */
+export function insertDrawing(view: EditorView) {
+  const { state } = view;
+  const { $from } = state.selection;
+  const at = $from.depth > 0 ? $from.after(1) : state.selection.from;
+  const width = 420;
+  const contentWidth = view.dom.clientWidth / (parseFloat(view.dom.closest<HTMLElement>('.page')?.style.getPropertyValue('--zoom') ?? '') || 1);
+  const x = Math.max(0, Math.round((contentWidth - width) / 2));
+  const node = nodes.drawing.create({ width, height: 260, x, wrap: 'block', shapes: [] });
+  let tr = state.tr.insert(at, node);
+  // Keep a paragraph after the drawing so there's somewhere to keep typing.
+  const after = at + node.nodeSize;
+  if (!tr.doc.resolve(after).nodeAfter) tr = tr.insert(after, nodes.paragraph.create());
+  tr = tr.setSelection(NodeSelection.create(tr.doc, at)).scrollIntoView();
+  view.dispatch(tr);
+  view.focus();
+}
+
 // ---- Math -----------------------------------------------------------------
 
 /** Focus the mathfield of the math node at `pos`. */

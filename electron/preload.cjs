@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('mathmirrorNative', {
   setDirty: (dirty) => ipcRenderer.send('set-dirty', dirty),
   getRecent: () => ipcRenderer.invoke('get-recent'),
   addRecent: (path) => ipcRenderer.send('add-recent', path),
+  clipboardWrite: (data) => ipcRenderer.invoke('clipboard-write', data),
+  clipboardRead: () => ipcRenderer.invoke('clipboard-read'),
   onMenu: (cb) => ipcRenderer.on('menu', (_e, id) => cb(id)),
   onOpenPath: (cb) => ipcRenderer.on('open-path', (_e, p) => cb(p)),
 });

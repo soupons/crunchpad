@@ -57,6 +57,8 @@ export function exportHtml(doc: PMNode, title: string, opts: ExportOptions): str
   section.env-proof::before { font-weight: normal; font-style: italic; }
   section.env-theorem, section.env-lemma, section.env-corollary, section.env-proposition { font-style: italic; }
   blockquote { border-left: 3px solid #bbb; margin-left: 0; padding-left: 1em; color: #555; }
+  div.drawing { margin: 1em 0; }
+  div.drawing svg { max-width: 100%; height: auto; }
   pre { background: #f3f3f3; padding: .75em; overflow-x: auto; }
 </style>
 </head>

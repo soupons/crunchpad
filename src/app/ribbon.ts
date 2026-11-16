@@ -259,7 +259,6 @@ export class Ribbon {
             this.btn({ cmd: 'fmt-bold', html: '<b>B</b>' }),
             this.btn({ cmd: 'fmt-italic', html: '<i>I</i>' }),
             this.btn({ cmd: 'fmt-underline', html: '<u>U</u>' }),
-            this.btn({ cmd: 'fmt-strike', html: '<s>S</s>' }),
             this.btn({ cmd: 'fmt-code', html: '<code>&lt;/&gt;</code>' }),
           ),
           this.row(
@@ -273,7 +272,6 @@ export class Ribbon {
         'Paragraph',
         this.col(
           this.row(
-            this.btn({ cmd: 'list-bullet', html: '<span class="ico-list">•≡</span>' }),
             this.btn({ cmd: 'list-ordered', html: '<span class="ico-list">1≡</span>' }),
             this.btn({ cmd: 'list-lettered', html: '<span class="ico-list">a≡</span>' }),
             this.btn({ cmd: 'block-quote', html: '<span class="ico-quote">❝</span>' }),
@@ -309,6 +307,7 @@ export class Ribbon {
           this.btn({ cmd: 'math-toggle-display', label: '⇄ Block' }),
         ),
       ),
+      this.group('Draw', this.btn({ cmd: 'insert-drawing', html: `<span class="rb-big rb-draw-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3-6 6 2 9-3s4-7 7-6"/><path d="M14 21l1.2-3.8L20 12.4l2.6 2.6-4.8 4.8z"/></svg></span><span>Drawing</span>`, cls: 'rb-tall', title: 'Insert drawing area' })),
       this.group(
         'Insert math',
         h(

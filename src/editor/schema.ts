@@ -1,5 +1,6 @@
 import { Schema, type NodeSpec, type MarkSpec, type DOMOutputSpec } from 'prosemirror-model';
 import { addListNodes } from 'prosemirror-schema-list';
+import { drawingSvg, type DrawingAttrs } from './drawing';
 
 export type Align = 'left' | 'center' | 'right' | 'justify';
 
@@ -168,6 +169,46 @@ const nodes: Record<string, NodeSpec> = {
       { class: 'math-display', 'data-latex': node.attrs.latex, 'data-numbered': String(node.attrs.numbered) },
       `$$${node.attrs.latex}$$`,
     ],
+  },
+
+  /** Freehand drawing area (see drawing.ts). Shapes are stored as JSON in attrs. */
+  drawing: {
+    group: 'block',
+    atom: true,
+    selectable: true,
+    draggable: false,
+    attrs: {
+      width: { default: 400 },
+      height: { default: 240 },
+      x: { default: 0 },
+      y: { default: 0 },
+      wrap: { default: 'block' },
+      bg: { default: 'none' },
+      shapes: { default: [] },
+    },
+    leafText: () => '',
+    parseDOM: [
+      {
+        tag: 'div[data-drawing]',
+        getAttrs: (dom) => {
+          try {
+            const a = JSON.parse((dom as HTMLElement).dataset.drawing ?? '{}');
+            return a && Array.isArray(a.shapes) ? a : false;
+          } catch {
+            return false;
+          }
+        },
+      },
+    ],
+    toDOM: (node) => {
+      // Include the SVG so the drawing shows up when pasted elsewhere or exported to HTML.
+      const div = document.createElement('div');
+      div.className = 'drawing';
+      div.dataset.drawing = JSON.stringify(node.attrs);
+      if (node.attrs.wrap === 'block' && node.attrs.x > 0) div.style.marginLeft = `${node.attrs.x}px`;
+      div.innerHTML = drawingSvg(node.attrs as DrawingAttrs);
+      return { dom: div };
+    },
   },
 
   text: { group: 'inline' },

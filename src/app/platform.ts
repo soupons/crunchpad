@@ -37,6 +37,8 @@ export interface NativeBridge {
   exportPdf(defaultName: string): Promise<string | null>;
   setTitle(title: string): void;
   setDirty(dirty: boolean): void;
+  clipboardWrite(data: { text?: string; html?: string; png?: Uint8Array }): Promise<void>;
+  clipboardRead(): Promise<{ text: string; html: string }>;
   onMenu(cb: (commandId: string) => void): void;
   onOpenPath(cb: (path: string) => void): void;
   getRecent(): Promise<string[]>;

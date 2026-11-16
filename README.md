@@ -39,6 +39,23 @@ leave the equation, and `Backspace` in an empty equation deletes it.
 Lists: type `- `, `1. ` or `a. ` at the start of a line for a bulleted,
 numbered or lettered (a. b. c.) list, or use the Paragraph buttons.
 
+## Right-click menu
+
+Right-click anywhere in the document for Cut / Copy / Paste. On an equation
+you also get **Copy LaTeX**, **Copy as image** (a crisp PNG you can paste into
+Word, Slides, chat apps…), Edit LaTeX and Delete. Copied equations paste back
+into MathMirror as real, editable equations.
+
+## Drawings (Draw → Drawing)
+
+Inserts a drawing area. Tools: pen, highlighter, line, arrow, rectangle,
+ellipse (Shift = 45° steps / squares / circles), eraser, plus 8 colors and a
+custom color picker, three thicknesses, filled shapes and an optional white
+background. Drag the grip (or use the move tool) to place it anywhere; drag the
+corner handle to resize. By default text flows above and below the drawing;
+the "in front of text" button lets it float freely over the page. Ctrl+Z undoes
+strokes. Exports: an image in Word, inline SVG in HTML, TikZ in LaTeX.
+
 ## Settings (⚙ in the ribbon)
 
 Stored per device. **Document**: default font, size, line spacing, equation

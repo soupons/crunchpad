@@ -8,6 +8,8 @@ import type { MathfieldElement } from 'mathlive';
 import { schema, ENV_KINDS, type EnvKind } from '../editor/schema';
 import { buildPlugins } from '../editor/plugins';
 import { mathHooks, mathNodeViews } from '../editor/mathview';
+import { drawingNodeView } from '../editor/drawing';
+import { installContextMenu } from './contextmenu';
 import * as cmd from '../editor/commands';
 import { docFromText } from '../editor/textmath';
 import { MATH_CATALOG } from '../math/catalog';
@@ -76,12 +78,16 @@ export class App {
     const initialDoc = this.loadRecovery() ?? PMNode.fromJSON(schema, WELCOME_DOC);
     this.view = new EditorView(this.els.page, {
       state: this.newState(initialDoc),
-      nodeViews: mathNodeViews,
+      nodeViews: { ...mathNodeViews, drawing: drawingNodeView },
       dispatchTransaction: (tr) => this.dispatch(tr),
       attributes: () => ({ class: 'doc', spellcheck: String(getSettings().spellcheck), 'aria-label': 'Document' }),
     });
 
     mathHooks.overlayOpen = () => this.quick?.isOpen || isDialogOpen();
+    installContextMenu(this.view, {
+      editLatex: () => void this.editLatexSource(),
+      notice: (m) => this.status.notice(m),
+    });
 
     this.ribbon = new Ribbon(this.els.ribbon, {
       insertLatex: (l) => cmd.insertMath(this.view, l),
@@ -152,6 +158,7 @@ export class App {
   }
 
   private refreshUI() {
+    this.fitPageToDrawings();
     this.ribbon?.update();
     this.status?.update(this.view.state.doc, this.file, this.zoom);
     const title = `${this.file.dirty ? '• ' : ''}${this.file.name} — MathMirror`;
@@ -212,9 +219,21 @@ export class App {
     return changed;
   }
 
+  /** Grow the page so drawings placed "in front of text" below the content stay on it. */
+  private fitPageToDrawings() {
+    let bottom = 0;
+    this.view?.state.doc.descendants((n) => {
+      if (n.type === schema.nodes.drawing && n.attrs.wrap === 'front') bottom = Math.max(bottom, n.attrs.y + n.attrs.height);
+      return n.isBlock && !n.isAtom;
+    });
+    const min = bottom ? `max(calc(11in * var(--zoom)), ${Math.ceil((bottom + 48) * this.zoom)}px)` : '';
+    if (this.els.page.style.minHeight !== min) this.els.page.style.minHeight = min;
+  }
+
   private setZoom(z: number) {
     this.zoom = Math.round(Math.max(0.5, Math.min(2.5, z)) * 10) / 10;
     this.els.page.style.setProperty('--zoom', String(this.zoom));
+    window.dispatchEvent(new Event('mathmirror:zoom'));
     this.refreshUI();
   }
 
@@ -655,6 +674,7 @@ export class App {
       { id: 'math-edit-source', title: 'Edit LaTeX source…', category: 'Math', shortcut: 'Mod-Alt-m', global: true, keywords: 'raw latex code tex paste insert', run: () => this.editLatexSource() },
       { id: 'math-toggle-number', title: 'Toggle equation number', category: 'Math', global: true, keywords: 'numbered label (1)', run: () => void cmd.toggleEquationNumber(this.view) },
       { id: 'math-toggle-display', title: 'Switch inline ⇄ display equation', category: 'Math', global: true, keywords: 'block centered convert', run: () => void cmd.toggleMathDisplay(this.view) },
+      { id: 'insert-drawing', title: 'Insert drawing', category: 'Insert', keywords: 'draw sketch diagram pen shapes canvas picture figure', run: () => { getActiveMathfield()?.blur(); cmd.insertDrawing(this.view); } },
       { id: 'math-keyboard', title: 'Show/hide math keyboard', category: 'Math', keywords: 'virtual on-screen keyboard touch', run: () => showVirtualKeyboard() },
       {
         id: 'math-matrix',

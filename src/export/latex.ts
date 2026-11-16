@@ -1,6 +1,7 @@
 import type { Mark, Node as PMNode } from 'prosemirror-model';
 import { cleanLatex } from './mathconv';
 import type { ExportOptions } from '../app/settings';
+import { drawingTikz, type DrawingAttrs } from '../editor/drawing';
 
 const TEXT_ESCAPES: Record<string, string> = {
   '\\': '\\textbackslash{}',
@@ -101,6 +102,9 @@ function block(node: PMNode, out: string[]) {
       out.push(`\\begin{${env}}${opts.length ? `[${opts.join(', ')}]` : ''}\n${items.join('\n')}\n\\end{${env}}`);
       break;
     }
+    case 'drawing':
+      if (node.attrs.shapes.length) out.push(drawingTikz(node.attrs as DrawingAttrs));
+      break;
     case 'code_block':
       out.push(`\\begin{verbatim}\n${node.textContent}\n\\end{verbatim}`);
       break;
@@ -127,6 +131,8 @@ export function exportLatex(doc: PMNode, title: string, opts: ExportOptions): st
 \\usepackage[normalem]{ulem}
 \\usepackage[margin=1in]{geometry}
 \\usepackage{enumitem}
+\\usepackage{tikz}
+\\usetikzlibrary{arrows.meta}
 \\usepackage{hyperref}
 ${tagForm}
 \\theoremstyle{plain}

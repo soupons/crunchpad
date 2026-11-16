@@ -3,6 +3,8 @@ import type { Mark, Node as PMNode } from 'prosemirror-model';
 import { ENV_KINDS, type EnvKind } from '../editor/schema';
 import { escapeXml as esc, latexToOmml } from './mathconv';
 import type { ExportOptions } from '../app/settings';
+import { drawingSvg, type DrawingAttrs } from '../editor/drawing';
+import { svgToPng } from './image';
 
 /**
  * Writes a .docx (Office Open XML) package by hand. Equations become native
@@ -46,7 +48,43 @@ class DocxWriter {
   private eqNo = 0;
   private envNo: Record<string, number> = {};
 
-  constructor(private opts: ExportOptions) {}
+  /** PNG files to add under word/media/. */
+  media: { name: string; data: Uint8Array }[] = [];
+  private imageNo = 0;
+
+  constructor(
+    private opts: ExportOptions,
+    /** Pre-rendered PNGs for drawing nodes (rendering is async; writing is not). */
+    private drawings: Map<PMNode, Uint8Array> = new Map(),
+  ) {}
+
+  /** An inline picture paragraph for a drawing, scaled to fit the text width. */
+  private drawingParagraph(node: PMNode, ctx: Ctx): string {
+    const png = this.drawings.get(node);
+    if (!png) return '';
+    const a = node.attrs as DrawingAttrs;
+    const n = ++this.imageNo;
+    const name = `drawing${n}.png`;
+    this.media.push({ name, data: png });
+    const id = `rId${this.nextRel++}`;
+    this.rels.push(`<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${name}"/>`);
+    const EMU = 9525; // per CSS px
+    const maxW = 6.5 * 914400;
+    const scale = Math.min(1, maxW / (a.width * EMU));
+    const cx = Math.round(a.width * EMU * scale);
+    const cy = Math.round(a.height * EMU * scale);
+    const indent = a.wrap === 'block' && a.x > 0 ? Math.min(Math.round(a.x * 15), Math.max(0, 9360 - Math.round(cx / 635))) : 0;
+    const pic =
+      `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${n}" name="Drawing ${n}"/>` +
+      `<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>` +
+      `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+      `<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${n}" name="${name}"/><pic:cNvPicPr/></pic:nvPicPr>` +
+      `<pic:blipFill><a:blip r:embed="${id}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+      `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>` +
+      `</a:graphicData></a:graphic></wp:inline></w:drawing>`;
+    const pPr = indent ? `<w:pPr><w:ind w:left="${indent}"/></w:pPr>` : this.pPr(ctx);
+    return `<w:p>${pPr}<w:r>${pic}</w:r></w:p>`;
+  }
 
   run(text: string, marks: readonly Mark[], ctx: Ctx): string {
     const props: string[] = [];
@@ -165,6 +203,11 @@ class DocxWriter {
         } else {
           this.body.push(`<w:p>${this.pPr(ctx, { align: 'center' })}<m:oMathPara>${omml}</m:oMathPara></w:p>`);
         }
+        break;
+      }
+      case 'drawing': {
+        const p = this.drawingParagraph(node, ctx);
+        if (p) this.body.push(p);
         break;
       }
       case 'blockquote':
@@ -288,11 +331,25 @@ function numberingXml(nums: string[]) {
 }
 
 export async function exportDocx(doc: PMNode, title: string, opts: ExportOptions): Promise<Uint8Array> {
-  const w = new DocxWriter(opts);
+  const drawings = new Map<PMNode, Uint8Array>();
+  const pending: Promise<void>[] = [];
+  doc.descendants((n) => {
+    if (n.type.name === 'drawing' && n.attrs.shapes.length) {
+      const a = n.attrs as DrawingAttrs;
+      pending.push(
+        svgToPng(drawingSvg(a), a.width, a.height, 2)
+          .then((b) => b.arrayBuffer())
+          .then((buf) => void drawings.set(n, new Uint8Array(buf))),
+      );
+    }
+    return !n.isAtom;
+  });
+  await Promise.all(pending);
+  const w = new DocxWriter(opts, drawings);
   doc.forEach((node) => w.block(node, {}));
 
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="${W_NS}" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<w:document xmlns:w="${W_NS}" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">
 <w:body>
 ${w.body.join('\n')}
 <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>
@@ -307,6 +364,7 @@ ${w.body.join('\n')}
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
   <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
   <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
@@ -337,6 +395,7 @@ ${w.body.join('\n')}
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>MathMirror</Application></Properties>`,
   );
   zip.file('word/document.xml', documentXml);
+  for (const m of w.media) zip.file(`word/media/${m.name}`, m.data);
   zip.file('word/styles.xml', stylesXml(opts));
   zip.file('word/numbering.xml', numberingXml(w.nums));
   zip.file(

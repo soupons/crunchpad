@@ -316,6 +316,7 @@ kbd {
   font-family: var(--doc-font);
   font-size: calc(var(--doc-size) * var(--zoom));
   line-height: var(--doc-line);
+  position: relative; /* drawings "in front of text" are positioned on the page */
 }
 @media (max-width: 700px) {
   .page { padding: 24px 18px; }
@@ -446,6 +447,88 @@ math-field::part(virtual-keyboard-toggle) { display: none; }
 /* Static previews (ribbon, palette, quick search) */
 .ML__latex { color: inherit; }
 .latex-error { color: #c62828; font-size: 11px; }
+
+/* ============================================================
+   Drawings
+   ============================================================ */
+.drawing-anchor { position: relative; margin: 0.6em 0; line-height: normal; white-space: normal; }
+.drawing-anchor.front { position: static; margin: 0; height: 0; }
+.drawing-box {
+  position: absolute;
+  z-index: 5;
+  border-radius: 4px;
+  outline: 1px dashed transparent;
+  outline-offset: 0;
+  touch-action: none;
+  user-select: none;
+}
+.drawing-box.front { z-index: 6; }
+.drawing-box:hover, .drawing-box.empty { outline-color: var(--border-strong); }
+.drawing-box.active { outline: 1.5px solid var(--accent); z-index: 7; }
+.drawing-box.dragging { opacity: 0.85; z-index: 8; }
+.drawing-box:focus { outline-style: solid; }
+.drawing-box:focus-visible { outline: 2px solid var(--accent); }
+.drawing-box { color: var(--page-text); }
+.drawing-box.bg-white { background: #fff; color: #1b1b1f; }
+.drawing-svg { display: block; width: 100%; height: 100%; overflow: hidden; cursor: crosshair; border-radius: 4px; }
+.drawing-box[data-tool='move'] .drawing-svg { cursor: move; }
+.drawing-box[data-tool='eraser'] .drawing-svg { cursor: cell; }
+.drawing-hint {
+  position: absolute; inset: 0; display: none; place-items: center; pointer-events: none;
+  font-family: var(--ui-font); font-size: 12px; color: var(--text-faint);
+}
+.drawing-box.empty .drawing-hint { display: grid; }
+.drawing-box.empty.active .drawing-hint { display: none; }
+.drawing-resize {
+  position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 2px;
+  background: var(--page); border: 1.5px solid var(--accent); cursor: nwse-resize; display: none;
+}
+.drawing-box.active .drawing-resize { display: block; }
+.drawing-toolbar {
+  position: absolute; left: -1px; bottom: calc(100% + 6px);
+  display: none; flex-wrap: wrap; align-items: center; gap: 2px;
+  width: max-content; max-width: calc(100vw - 32px);
+  padding: 3px 4px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--chrome); box-shadow: var(--shadow-pop);
+  font-family: var(--ui-font); cursor: move; z-index: 2;
+}
+.drawing-box.active .drawing-toolbar { display: flex; }
+.dt-grip { color: var(--text-faint); font-size: 14px; padding: 0 3px; }
+.dt-sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; }
+.dt-btn {
+  display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 4px;
+  border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--text); cursor: pointer;
+}
+.dt-btn:hover { background: var(--hover); }
+.dt-btn.on { background: var(--active); border-color: var(--accent); color: var(--accent-text); }
+.dt-btn.dt-danger:hover { color: #c62828; }
+.dt-text { font-size: 11.5px; }
+.dt-swatch { display: block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(127, 127, 127, 0.5); }
+.dt-color.on { background: transparent; }
+.dt-color.on .dt-swatch { box-shadow: 0 0 0 2px var(--chrome), 0 0 0 3.5px var(--accent); }
+.dt-dot { display: block; border-radius: 50%; background: currentColor; }
+.dt-custom { width: 26px; height: 24px; padding: 0 2px; border: 1px solid transparent; border-radius: 5px; background: transparent; cursor: pointer; }
+.dt-custom.on { border-color: var(--accent); }
+.rb-draw-ico svg { display: block; }
+
+/* ============================================================
+   Context menu
+   ============================================================ */
+.ctx-menu {
+  position: fixed; z-index: 70; min-width: 190px; padding: 4px;
+  display: flex; flex-direction: column;
+  background: var(--chrome); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-pop);
+  font-family: var(--ui-font); font-size: 13px;
+}
+.ctx-item {
+  display: flex; justify-content: space-between; gap: 24px; align-items: center;
+  padding: 6px 10px; border: none; border-radius: 5px; background: transparent; color: var(--text); text-align: left; cursor: pointer;
+}
+.ctx-item:hover:not(:disabled) { background: var(--accent-soft); }
+.ctx-item:disabled { opacity: 0.45; cursor: default; }
+.ctx-item.danger { color: #c62828; }
+.ctx-hint { font-size: 11.5px; color: var(--text-faint); }
+.ctx-sep { height: 1px; background: var(--border); margin: 4px 6px; }
 
 /* ============================================================
    Status bar
@@ -663,7 +746,8 @@ math-field::part(virtual-keyboard-toggle) { display: none; }
   @page { margin: 0.8in 0.9in; }
   html, body, #app { height: auto; overflow: visible; background: #fff; }
   :root { --page: #fff; --page-text: #000; --math-bg: transparent; --math-focus: transparent; }
-  .ribbon, .statusbar, .qs, .modal-backdrop, .popover { display: none !important; }
+  .ribbon, .statusbar, .qs, .modal-backdrop, .popover, .ctx-menu, .drawing-toolbar, .drawing-resize, .drawing-hint { display: none !important; }
+  .drawing-box { outline: none !important; }
   .workspace { padding: 0; overflow: visible; }
   .page { width: auto; min-height: 0; box-shadow: none; padding: 0; font-size: var(--doc-size); }
   math-field { background: transparent !important; box-shadow: none !important; }

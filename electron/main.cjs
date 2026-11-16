@@ -1,7 +1,7 @@
 // MathMirror desktop shell (Windows / macOS / Linux).
 // The editor itself is the same web app; this file adds native file dialogs,
 // menus, PDF export and file associations.
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ClipboardItem, Menu, clipboard, dialog, ipcMain, nativeImage, shell } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
@@ -266,6 +266,41 @@ ipcMain.handle('export-pdf', async (_e, defaultName) => {
   lastDir = path.dirname(r.filePath);
   shell.openPath(r.filePath);
   return r.filePath;
+});
+
+// ---- Clipboard (context menu cut/copy/paste, copy as image) --------------------------
+// Electron 45+ has a W3C-style async clipboard (ClipboardItem, MIME types);
+// older versions have the synchronous text/html/image API.
+const asyncClipboard = typeof ClipboardItem === 'function';
+
+ipcMain.handle('clipboard-write', async (_e, data) => {
+  const text = typeof data?.text === 'string' ? data.text : undefined;
+  const html = typeof data?.html === 'string' ? data.html : undefined;
+  const png = data?.png instanceof Uint8Array ? Buffer.from(data.png) : undefined;
+  if (asyncClipboard) {
+    const items = {};
+    if (text !== undefined) items['text/plain'] = text;
+    if (html !== undefined) items['text/html'] = html;
+    if (png) items['image/png'] = new Blob([png], { type: 'image/png' });
+    await clipboard.write([new ClipboardItem(items)]);
+    return;
+  }
+  const out = {};
+  if (text !== undefined) out.text = text;
+  if (html !== undefined) out.html = html;
+  if (png) out.image = nativeImage.createFromBuffer(png);
+  clipboard.write(out);
+});
+
+ipcMain.handle('clipboard-read', async () => {
+  if (!asyncClipboard) return { text: clipboard.readText(), html: clipboard.readHTML() };
+  let text = '';
+  let html = '';
+  for (const item of await clipboard.read()) {
+    if (!html && item.types.includes('text/html')) html = await (await item.getType('text/html')).text();
+    if (!text && item.types.includes('text/plain')) text = await (await item.getType('text/plain')).text();
+  }
+  return { text, html };
 });
 
 ipcMain.handle('get-recent', () => getRecent());
