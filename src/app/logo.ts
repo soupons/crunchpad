@@ -1,8 +1,8 @@
 /**
  * The crunchpad logo: an uppercase Ξ (xi) on the accent colour. Drawn as three
- * serifed bars rather than a font glyph so it looks identical everywhere. The same
- * markup is saved as public/favicon.svg and rasterized to electron/icon.png
- * (scripts/make-icon.cjs).
+ * serifed bars rather than a font glyph so it looks identical everywhere. It is
+ * rasterized to electron/icon.png by scripts/make-icon.cjs. The browser tab icon,
+ * public/favicon.svg, is the same Ξ in blue on a transparent background.
  */
 export const LOGO_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">' +
